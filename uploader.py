@@ -1,21 +1,21 @@
-/*
- * Copyright (C) 2024- Germano Rizzo
- *
- * This file is part of fileconduit.
- *
- * fileconduit is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * fileconduit is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with fileconduit.  If not, see <http://www.gnu.org/licenses/>.
- */
+#
+# Copyright (C) 2024- Germano Rizzo
+#
+# This file is part of fileconduit.
+#
+# fileconduit is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# fileconduit is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with fileconduit.  If not, see <http://www.gnu.org/licenses/>.
+#
 import os
 import requests
 import time
@@ -24,7 +24,7 @@ import time
 SECRET = "xyz"
 
 # Base URL for all HTTP requests
-BASE_URL = "http://localhost:8080"
+BASE_URL = "https://fileconduit.example.com"
 
 # Global buffer size for file chunks
 # On stable connections, higher is faster
@@ -63,12 +63,9 @@ def upload_file(filepath):
     with open(filepath, 'rb') as file:
         # Poll to check server availability
         while True:
-            # print("ping...")
             ping_response = requests.get(f"{BASE_URL}/ping/{conduitId}")
-            # print(">>>>>>"+ping_response.text)
             ping_data = ping_response.json()
 
-            #print(ping_data)
             if ping_data['op'] == 1:
                 # Server ready, get offset
                 server_offset = int(ping_data['arg'])
@@ -83,14 +80,11 @@ def upload_file(filepath):
             chunk = file.read(BUFFER_SIZE)
 
             # Send chunk
-            print("ul...")
             ul_response = requests.put(
                 f"{BASE_URL}/ul/{conduitId}",
                 params={"from": current_offset},
                 data=chunk
             )
-
-            print(f"Uploaded {current_offset}++{len(chunk)} on {filesize} bytes")
 
             # Increment offset
             current_offset += len(chunk)
@@ -104,7 +98,7 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("Use: python script.py <file_path>")
+        print("Usage: python uploader.py <file_path>")
         sys.exit(1)
 
     filepath = sys.argv[1]
