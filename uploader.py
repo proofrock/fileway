@@ -21,10 +21,10 @@ import requests
 import time
 
 # Secret for uploading
-SECRET = "xyz"
+SECRET = "mysecret" # Hashes to 652c7dc687d98c9889304ed2e408c74b611e86a40caa51c4b43f1dd5913c5cd0
 
 # Base URL for all HTTP requests
-BASE_URL = "https://fileconduit.example.com"
+BASE_URL = "http://localhost:8080"
 
 # Global buffer size for file chunks
 # On stable connections, higher is faster
@@ -53,8 +53,10 @@ def upload_file(filepath):
     conduitId = int(init_response.text)
 
     # Output the full conduit URL
-    print("All set up!")
-    print(f"Download your file from {BASE_URL}/dl/{conduitId}")
+    print("== fileconduit v0.0.2 ==")
+    print("All set up! Download your file using:")
+    print(f"- a browser, from {BASE_URL}/dl/{conduitId}")
+    print(f"- a shell, with $> curl -OJ {BASE_URL}/dl/{conduitId}")
 
     # Initial offset
     current_offset = 0
@@ -98,6 +100,7 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
+        print("== fileconduit v0.0.2 ==")
         print("Usage: python uploader.py <file_path>")
         sys.exit(1)
 

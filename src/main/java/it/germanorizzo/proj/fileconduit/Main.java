@@ -34,6 +34,11 @@ public class Main {
     private static final Map<Long, Conduit> conduits = new ConcurrentHashMap<>();
 
     public static void main(String[] args) {
+        System.out.println();
+        System.out.println("========================");
+        System.out.println("== fileconduit v0.0.2 ==");
+        System.out.println("========================");
+        System.out.println();
         var app = Javalin.create(javalinConfig -> {
             javalinConfig.showJavalinBanner = false;
             javalinConfig.http.disableCompression();
