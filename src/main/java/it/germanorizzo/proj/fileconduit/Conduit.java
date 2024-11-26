@@ -56,7 +56,14 @@ public class Conduit {
         return lastAccessed;
     }
 
+    private synchronized boolean isDownloading() {
+        return downloadStream != null || currentPosition >= 0;
+    }
+
     public synchronized Downloadable download() {
+        if (isDownloading())
+            throw new IllegalStateException("Can't download when there is already a Downloadable");
+
         touch();
         currentPosition = 0;
         downloadStream = new LinkedBlockingQueue<>();
@@ -80,7 +87,7 @@ public class Conduit {
 
     public synchronized Command ping() {
         touch();
-        if (currentPosition >= 0)
+        if (isDownloading())
             return new Command(1, currentPosition);
         return new Command(0, 0);
     }

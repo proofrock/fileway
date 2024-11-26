@@ -21,6 +21,7 @@ package it.germanorizzo.proj.fileconduit;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 import io.javalin.http.HttpResponseException;
+import it.germanorizzo.proj.fileconduit.internals.Downloadable;
 
 import java.io.IOException;
 import java.util.Map;
@@ -34,14 +35,9 @@ public class Main {
 
     public static void main(String[] args) {
         var app = Javalin.create(javalinConfig -> {
-                    javalinConfig.showJavalinBanner = false;
-                    javalinConfig.http.disableCompression();
-                })
-                .get("/dl/{conduitId}", Main::dl)
-                .put("/init", Main::init)
-                .get("/ping/{conduitId}", Main::ping)
-                .put("/ul/{conduitId}", Main::ul)
-                .start(8080);
+            javalinConfig.showJavalinBanner = false;
+            javalinConfig.http.disableCompression();
+        }).get("/dl/{conduitId}", Main::dl).put("/init", Main::init).get("/ping/{conduitId}", Main::ping).put("/ul/{conduitId}", Main::ul).start(8080);
     }
 
     private static Conduit getConduit(Context ctx) {
@@ -55,7 +51,13 @@ public class Main {
 
     public static Context dl(Context ctx) throws IOException, InterruptedException {
         var conduit = getConduit(ctx);
-        var dlManager = conduit.download();
+        Downloadable dlManager;
+        try {
+            dlManager = conduit.download();
+        } catch (IllegalStateException ise) {
+            throw new HttpResponseException(410, "Conduit Already Downloading or Downloaded");
+        }
+
         ctx.header("Content-Type", "application/octet-stream");
         ctx.header("Content-Disposition", "attachment; filename=\"" + dlManager.getFilename() + "\"");
         ctx.header("Content-Length", Long.toString(dlManager.getSize()));
@@ -63,10 +65,10 @@ public class Main {
             while (true) {
                 var chunk = dlManager.getContent().take();
                 if (chunk.finished()) {
+                    os.flush();
                     break;
                 }
                 os.write(chunk.chunk());
-                os.flush();
             }
         }
         conduits.remove(Long.valueOf(conduit.getConduitId()));
@@ -105,9 +107,7 @@ public class Main {
     static {
         scheduler.scheduleAtFixedRate(() -> {
             long cutoffTime = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15);
-            conduits.entrySet().removeIf(entry ->
-                    entry.getValue().getLastAccessed() < cutoffTime
-            );
+            conduits.entrySet().removeIf(entry -> entry.getValue().getLastAccessed() < cutoffTime);
         }, 1, 1, TimeUnit.MINUTES);
     }
 }
