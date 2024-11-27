@@ -35,7 +35,7 @@ public class Main {
     public static void main(String[] args) {
         System.out.println();
         System.out.println("========================");
-        System.out.println("== fileconduit v0.0.2 ==");
+        System.out.println("== fileconduit v0.1.0 ==");
         System.out.println("========================");
         System.out.println();
         var app = Javalin.create(javalinConfig -> {

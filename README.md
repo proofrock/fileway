@@ -1,4 +1,4 @@
-# fileconduit v0.0.2
+# fileconduit v0.1.0
 
 `fileconduit` is a client/server application that aids to transfer files securely between two systems that access the internet but don't access each other.
 
@@ -32,7 +32,7 @@ And follow the instructions to download the file.
 
 # Installation/usage
 
-This section expands on the previous, to explain how to setup `fileconduit` in a proper architecture. It assumes a certain familiarity with `docker`, we won't explain all the concepts involved.
+This section expands on the previous, to explain how to set up `fileconduit` in a proper architecture. It assumes a certain familiarity with `docker`, we won't explain all the concepts involved.
 
 ## Server
 
@@ -77,7 +77,6 @@ Download the file `upload.py` from this repository. Configure it:
 
 - **Line 24**: the secret
 - **Line 27**: the base URL that you exposed to internet (in the `caddy` example above, `https://conduit.example.com`)
-- **Line 31**: (optional) the buffer size
 
 Then just launch it:
 
@@ -88,7 +87,7 @@ python3 uploader.py myfile.bin
 This will output a link with the instructions to download. The link is unique and, while public, it's quite difficult to guess.
 
 ```
-== fileconduit v0.0.2 ==
+== fileconduit v0.1.0 ==
 All set up! Download your file:
 - a browser, from https://pipe.gercloud.cc/dl/4980907730449368564
 - a shell, with $> curl -OJ https://pipe.gercloud.cc/dl/4980907730449368564
@@ -98,6 +97,6 @@ After a client initiates a download and the uploader sends all the data, the upl
 
 # Building the server
 
-In the gradle setup of this repository, use `gradle buildDocker`. This will generate a docker image tagged as `fileconduit:v0.0.2`.
+In the gradle setup of this repository, use `gradle buildDocker`. This will generate a docker image tagged as `fileconduit:v0.1.0`.
 
 `docker` and `docker buildx` must be properly installed and available.

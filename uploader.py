@@ -26,10 +26,6 @@ SECRET = "mysecret" # Hashes to 652c7dc687d98c9889304ed2e408c74b611e86a40caa51c4
 # Base URL for all HTTP requests
 BASE_URL = "http://localhost:8080"
 
-# Global buffer size for file chunks
-# On stable connections, higher is faster
-BUFFER_SIZE = 65536
-
 #############################
 ### Don't touch from here ###
 #############################
@@ -53,7 +49,7 @@ def upload_file(filepath):
     conduitId = int(init_response.text)
 
     # Output the full conduit URL
-    print("== fileconduit v0.0.2 ==")
+    print("== fileconduit v0.1.0 ==")
     print("All set up! Download your file using:")
     print(f"- a browser, from {BASE_URL}/dl/{conduitId}")
     print(f"- a shell, with $> curl -OJ {BASE_URL}/dl/{conduitId}")
@@ -61,46 +57,30 @@ def upload_file(filepath):
     # Initial offset
     current_offset = 0
 
+    # Poll to check server availability
+    while True:
+        ping_response = requests.get(f"{BASE_URL}/ping/{conduitId}")
+        if ping_response.text == '1':
+            break
+        time.sleep(1) # Cycle again waiting 1s
+
+
     # Open file in binary mode
     with open(filepath, 'rb') as file:
-        # Poll to check server availability
-        while True:
-            ping_response = requests.get(f"{BASE_URL}/ping/{conduitId}")
-            ping_data = ping_response.json()
+        response = requests.put(
+            f"{BASE_URL}/ul/{conduitId}",
+            data=file,  # Directly stream file contents
+        )
 
-            if ping_data['op'] == 1:
-                # Server ready, get offset
-                server_offset = int(ping_data['arg'])
-                break
-
-            # Wait a second before retrying
-            time.sleep(1)
-
-        while True:
-            # Read chunk to send
-            file.seek(current_offset)
-            chunk = file.read(BUFFER_SIZE)
-
-            # Send chunk
-            ul_response = requests.put(
-                f"{BASE_URL}/ul/{conduitId}",
-                params={"from": current_offset},
-                data=chunk
-            )
-
-            # Increment offset
-            current_offset += len(chunk)
-
-            # Exit if everything is sent
-            if current_offset >= filesize:
-                break
+        # Raise an exception for HTTP errors
+        response.raise_for_status()
 
 # Example usage
 if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("== fileconduit v0.0.2 ==")
+        print("== fileconduit v0.1.0 ==")
         print("Usage: python uploader.py <file_path>")
         sys.exit(1)
 
