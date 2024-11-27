@@ -18,6 +18,9 @@
  */
 package it.germanorizzo.proj.fileconduit;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -45,5 +48,14 @@ public class Utils {
             hexString.append(String.format("%02x", Byte.valueOf(b)));
         }
         return hexString.toString();
+    }
+
+    public static void copyInputStream(InputStream inputStream, OutputStream outputStream) throws IOException {
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, bytesRead);
+        }
+        outputStream.flush();
     }
 }

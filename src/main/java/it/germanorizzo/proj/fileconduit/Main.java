@@ -21,7 +21,6 @@ package it.germanorizzo.proj.fileconduit;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 import io.javalin.http.HttpResponseException;
-import it.germanorizzo.proj.fileconduit.internals.Downloadable;
 
 import java.io.IOException;
 import java.util.Map;
@@ -66,17 +65,15 @@ public class Main {
         ctx.header("Content-Type", "application/octet-stream");
         ctx.header("Content-Disposition", "attachment; filename=\"" + dlManager.getFilename() + "\"");
         ctx.header("Content-Length", Long.toString(dlManager.getSize()));
+
+        Thread.sleep(1000);
         try (var os = ctx.outputStream()) {
-            while (true) {
-                var chunk = dlManager.getContent().take();
-                if (chunk.finished()) {
-                    os.flush();
-                    break;
-                }
-                os.write(chunk.chunk());
-            }
+            Utils.copyInputStream(dlManager.getContent(), os);
+        } finally {
+            conduit.doneReceiving();
+            conduits.remove(Long.valueOf(conduit.getConduitId()));
         }
-        conduits.remove(Long.valueOf(conduit.getConduitId()));
+
         return ctx.status(200);
     }
 
@@ -94,14 +91,11 @@ public class Main {
     }
 
     public static Context ping(Context ctx) {
-        return ctx.json(getConduit(ctx).ping());
+        return ctx.result(Integer.toString(getConduit(ctx).isDownloading())).status(200);
     }
 
-    public static Context ul(Context ctx) throws IOException {
-        var conduit = getConduit(ctx);
-        var from = Long.parseLong(ctx.queryParam("from"));
-        var content = ctx.bodyAsBytes();
-        conduit.offer(from, content);
+    public static Context ul(Context ctx) throws InterruptedException {
+        getConduit(ctx).offer(ctx.bodyInputStream());
         return ctx.status(200);
     }
 
@@ -111,7 +105,7 @@ public class Main {
 
     static {
         scheduler.scheduleAtFixedRate(() -> {
-            long cutoffTime = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15);
+            var cutoffTime = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15);
             conduits.entrySet().removeIf(entry -> entry.getValue().getLastAccessed() < cutoffTime);
         }, 1, 1, TimeUnit.MINUTES);
     }

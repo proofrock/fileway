@@ -16,14 +16,12 @@
  * You should have received a copy of the GNU General Public License
  * along with fileconduit.  If not, see <http://www.gnu.org/licenses/>.
  */
-package it.germanorizzo.proj.fileconduit.internals;
+package it.germanorizzo.proj.fileconduit;
 
 import java.io.InputStream;
 
 public interface Downloadable {
     String getFilename();
-
     long getSize();
-
     InputStream getContent();
 }

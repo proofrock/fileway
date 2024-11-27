@@ -18,14 +18,12 @@
  */
 package it.germanorizzo.proj.fileconduit;
 
-import it.germanorizzo.proj.fileconduit.internals.Chunk;
-import it.germanorizzo.proj.fileconduit.internals.Command;
-import it.germanorizzo.proj.fileconduit.internals.Downloadable;
-
-import java.io.IOException;
+import java.io.InputStream;
 import java.security.SecureRandom;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class Conduit {
     private static final SecureRandom RND = new SecureRandom();
@@ -34,9 +32,11 @@ public class Conduit {
     private final String filename;
     private final long size;
 
-    private long lastAccessed = System.currentTimeMillis();
-    private long currentPosition = -1;
-    private BlockingQueue<Chunk> downloadStream = null;
+    private final AtomicLong lastAccessed = new AtomicLong(System.currentTimeMillis());
+    private final AtomicBoolean downloading = new AtomicBoolean(false);
+    private final AtomicReference<InputStream> downloadStream = new AtomicReference<>();
+    private final CountDownLatch senderReady = new CountDownLatch(1);
+    private final CountDownLatch receivedDone = new CountDownLatch(1);
 
     public Conduit(String filename, long size) {
         this.conduitId = Math.abs(RND.nextLong());
@@ -44,29 +44,26 @@ public class Conduit {
         this.size = size;
     }
 
-    private void touch() {
-        lastAccessed = System.currentTimeMillis();
-    }
-
     public long getConduitId() {
         return conduitId;
     }
 
     public long getLastAccessed() {
-        return lastAccessed;
+        return lastAccessed.get();
     }
 
-    private synchronized boolean isDownloading() {
-        return downloadStream != null || currentPosition >= 0;
+    private void touch() {
+        lastAccessed.set(System.currentTimeMillis());
     }
 
-    public synchronized Downloadable download() {
-        if (isDownloading())
+    public Downloadable download() throws InterruptedException {
+        if (downloading.get())
             throw new IllegalStateException("Can't download when there is already a Downloadable");
 
         touch();
-        currentPosition = 0;
-        downloadStream = new LinkedBlockingQueue<>();
+        downloading.set(true);
+        senderReady.await();
+
         return new Downloadable() {
             @Override
             public String getFilename() {
@@ -79,30 +76,25 @@ public class Conduit {
             }
 
             @Override
-            public BlockingQueue<Chunk> getContent() {
-                return downloadStream;
+            public InputStream getContent() {
+                return downloadStream.get();
             }
         };
     }
 
-    public synchronized Command ping() {
-        touch();
-        if (isDownloading())
-            return new Command(1, currentPosition);
-        return new Command(0, 0);
+    public void doneReceiving() {
+        receivedDone.countDown();
     }
 
-    public synchronized void offer(long from, byte[] content) throws IOException {
+    public int isDownloading() {
         touch();
-        if (currentPosition != from)
-            throw new IOException("Wrong position, I asked for " + currentPosition);
-        if (content.length > 0) {
-            downloadStream.add(new Chunk(false, content));
-            currentPosition += content.length;
-            if (currentPosition >= size)
-                downloadStream.add(new Chunk(true, new byte[]{}));
-        } else {
-            downloadStream.add(new Chunk(true, content));
-        }
+        return downloading.get() ? 1: 0;
+    }
+
+    public void offer(InputStream content) throws InterruptedException {
+        touch();
+        downloadStream.set(content);
+        senderReady.countDown();
+        receivedDone.await();
     }
 }
