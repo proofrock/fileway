@@ -18,34 +18,38 @@
  */
 package it.germanorizzo.proj.fileconduit;
 
-import java.io.InputStream;
-import java.security.SecureRandom;
-import java.util.concurrent.CountDownLatch;
+import java.util.Objects;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class Conduit {
-    private static final SecureRandom RND = new SecureRandom();
-
-    private final long conduitId;
+    public static final int CHUNK_SIZE = 16 * 1024 * 1024; // 16Mb
+    private static final int IDS_LENGTH = 33; // 192 bit
+    private static final int CHUNK_QUEUE_SIZE = 8; // 128Mb
+    private final String secret;
+    private final String conduitId;
     private final String filename;
     private final long size;
-
+    private final BlockingQueue<byte[]> chunkQueue = new ArrayBlockingQueue<>(CHUNK_QUEUE_SIZE);
     private final AtomicLong lastAccessed = new AtomicLong(System.currentTimeMillis());
-    private final AtomicBoolean downloading = new AtomicBoolean(false);
-    private final AtomicReference<InputStream> downloadStream = new AtomicReference<>();
-    private final CountDownLatch senderReady = new CountDownLatch(1);
-    private final CountDownLatch receivedDone = new CountDownLatch(1);
-
-    public Conduit(String filename, long size) {
-        this.conduitId = Math.abs(RND.nextLong());
+    private final AtomicBoolean downloadStarted = new AtomicBoolean(false);
+    public Conduit(String filename, long size, String secret) {
+        this.conduitId = Utils.genRandomString(IDS_LENGTH);
         this.filename = filename;
         this.size = size;
+        this.secret = secret;
     }
 
-    public long getConduitId() {
+    public String getConduitId() {
         return conduitId;
+    }
+
+    public boolean isUploadSecretWrong(String candidate) {
+        return !Objects.equals(secret, candidate);
     }
 
     public long getLastAccessed() {
@@ -57,12 +61,11 @@ public class Conduit {
     }
 
     public Downloadable download() throws InterruptedException {
-        if (downloading.get())
-            throw new IllegalStateException("Can't download when there is already a Downloadable");
+        if (downloadStarted.get())
+            throw new IllegalStateException("Conduit Already Downloading or Downloaded");
 
         touch();
-        downloading.set(true);
-        senderReady.await();
+        downloadStarted.set(true);
 
         return new Downloadable() {
             @Override
@@ -76,25 +79,30 @@ public class Conduit {
             }
 
             @Override
-            public InputStream getContent() {
-                return downloadStream.get();
+            public BlockingQueue<byte[]> getContent() {
+                return chunkQueue;
             }
         };
     }
 
-    public void doneReceiving() {
-        receivedDone.countDown();
+    public boolean isDownloading() {
+        touch();
+        return downloadStarted.get();
     }
 
-    public int isDownloading() {
+    public void offer(byte[] content) throws TimeoutException, InterruptedException {
         touch();
-        return downloading.get() ? 1: 0;
+        var timeout = !chunkQueue.offer(content, 30, TimeUnit.SECONDS);
+        if (timeout) {
+            throw new TimeoutException("Upload timed out. Conduit seems stuck.");
+        }
     }
 
-    public void offer(InputStream content) throws InterruptedException {
-        touch();
-        downloadStream.set(content);
-        senderReady.countDown();
-        receivedDone.await();
+    public interface Downloadable {
+        String getFilename();
+
+        long getSize();
+
+        BlockingQueue<byte[]> getContent();
     }
 }

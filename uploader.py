@@ -33,54 +33,62 @@ BASE_URL = "http://localhost:8080"
 def upload_file(filepath):
     # Extract filename from path
     filename = os.path.basename(filepath)
-
     # Get file size
     filesize = os.path.getsize(filepath)
 
-    # Initial call to get conduitId
-    init_response = requests.put(
-        f"{BASE_URL}/init",
-        params={
-            "secret": SECRET,
-            "filename": filename,
-            "size": filesize
-        }
-    )
-    conduitId = int(init_response.text)
-
-    # Output the full conduit URL
-    print("== fileconduit v0.1.0 ==")
-    print("All set up! Download your file using:")
-    print(f"- a browser, from {BASE_URL}/dl/{conduitId}")
-    print(f"- a shell, with $> curl -OJ {BASE_URL}/dl/{conduitId}")
-
-    # Initial offset
-    current_offset = 0
-
-    # Poll to check server availability
-    while True:
-        ping_response = requests.get(f"{BASE_URL}/ping/{conduitId}")
-        if ping_response.text == '1':
-            break
-        time.sleep(1) # Cycle again waiting 1s
-
-
     # Open file in binary mode
-    with open(filepath, 'rb') as file:
-        response = requests.put(
-            f"{BASE_URL}/ul/{conduitId}",
-            data=file,  # Directly stream file contents
+    with open(filepath, 'rb') as file: # I open it here to catch errors early
+        # Setup transmission
+        init_response = requests.get(
+            f"{BASE_URL}/setup",
+            params={
+                "filename": filename,
+                "size": filesize
+            },
+            headers={ "x-fileconduit-secret": SECRET },
+            timeout=30
         )
+        conduitId = init_response.text
 
-        # Raise an exception for HTTP errors
-        response.raise_for_status()
+        # Output the full conduit URL
+        print("== fileconduit v0.2.0 ==")
+        print("All set up! Download your file using:")
+        print(f"- a browser, from {BASE_URL}/dl/{conduitId}")
+        print(f"- a shell, with $> curl -OJ {BASE_URL}/dl/{conduitId}")
+
+        # Poll to check server availability and get chunk size
+        chunk_size = 0
+        while True:
+            ping_response = requests.get(
+                f"{BASE_URL}/ping/{conduitId}",
+                headers={ "x-fileconduit-secret": SECRET },
+                timeout=30)
+            if ping_response.text != "":
+                chunk_size = int(ping_response.text)
+                break
+            time.sleep(1) # Cycle again waiting 1s
+
+        while True:
+            chunk = file.read(chunk_size)
+            if len(chunk) == 0:
+                break
+
+            # Send chunk
+            ul_response = requests.put(
+                f"{BASE_URL}/ul/{conduitId}",
+                headers={ "x-fileconduit-secret": SECRET },
+                data=chunk,
+                timeout=30
+            )
+
+            ul_response.raise_for_status()
 
 # Example usage
 if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("== fileconduit v0.1.0 ==")
+        print("== fileconduit v0.2.0 ==")
         print("Usage: python uploader.py <file_path>")
         sys.exit(1)
 

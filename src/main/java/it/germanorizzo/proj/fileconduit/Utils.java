@@ -18,21 +18,23 @@
  */
 package it.germanorizzo.proj.fileconduit;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 
 public class Utils {
+    private static final SecureRandom RND = new SecureRandom();
+    private static final char[] ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".toCharArray();
+
     private Utils() {
     }
 
-    public static boolean equalsIgnoreCase(String a, String b) {
-        if (a == null) {
-            return b == null;
+    public static String genRandomString(int length) {
+        var sb = new StringBuilder(length);
+        for (var i = 0; i < length; i++) {
+            sb.append(ALPHABET[RND.nextInt(ALPHABET.length)]);
         }
-        return a.equalsIgnoreCase(b);
+        return sb.toString();
     }
 
     public static String sha256Hex(String input) {
@@ -47,15 +49,6 @@ public class Utils {
         for (var b : hash) {
             hexString.append(String.format("%02x", Byte.valueOf(b)));
         }
-        return hexString.toString();
-    }
-
-    public static void copyInputStream(InputStream inputStream, OutputStream outputStream) throws IOException {
-        byte[] buffer = new byte[4096];
-        int bytesRead;
-        while ((bytesRead = inputStream.read(buffer)) != -1) {
-            outputStream.write(buffer, 0, bytesRead);
-        }
-        outputStream.flush();
+        return hexString.toString().toLowerCase();
     }
 }

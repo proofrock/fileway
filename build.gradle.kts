@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "org.example"
-version = "0.1.0"
+version = "0.2.0"
 
 repositories {
     mavenCentral()
@@ -39,7 +39,7 @@ tasks.register("buildDocker") {
         exec {
             workingDir(".")
             commandLine("docker", "buildx", "build",
-                "-t", "fileconduit:v0.1.0",
+                "-t", "fileconduit:v0.2.0",
                 "-f", "Dockerfile",
                 "--no-cache",
                 "."

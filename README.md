@@ -1,4 +1,4 @@
-# fileconduit v0.1.0
+# fileconduit v0.2.0
 
 `fileconduit` is a client/server application that aids to transfer files securely between two systems that access the internet but don't access each other.
 
@@ -14,7 +14,7 @@ This will print a secure link to download the file from, using a browser or `cur
 
 # Quickstart/demo
 
-For a quick test of how it works, you can run it locally. Prerequisites are `docker` and `python` v3, a file to upload, nothing else.
+For a quick test of how it works, you can run it locally. Prerequisites are `docker` and `bash` OR `python` v3, a file to upload, nothing else.
 
 Run the server:
 
@@ -22,10 +22,12 @@ Run the server:
 docker run --rm -p 8080:8080 -e FILECONDUIT_SECRET_HASH=652c7dc687d98c9889304ed2e408c74b611e86a40caa51c4b43f1dd5913c5cd0 germanorizzo/fileconduit:latest
 ```
 
-Then download `uploader.py` from this repository and run it in another console:
+Then download `uploader.[py|sh]` from this repository and run it in another console:
 
 ```bash
 python3 uploader.py myfile.bin
+# or
+bash uploader.sh myfile.bin
 ```
 
 And follow the instructions to download the file.
@@ -42,8 +44,10 @@ Get a server, ideally already provisioned with a reverse proxy. `fileconduit` is
 
 Generate a secret, best a long (24+) sequence of letters and numbers (to avoid escaping problems), and hash it with SHA256 using for example [this site](https://emn178.github.io/online-tools/sha256.html) that, at time of writing, doesn't seem to send your secret over the intenet (check!).
 
+> You can generate several hashes, and specify them as a comma-separated list.
+
 ```bash
-docker run --name fileconduit -p 8080:8080 -e FILECONDUIT_SECRET_HASH=<secret_hash> germanorizzo/fileconduit:latest
+docker run --name fileconduit -p 8080:8080 -e FILECONDUIT_SECRET_HASH=<secret_hash[,<another_one>,...]> germanorizzo/fileconduit:latest
 ```
 
 Or, via docker compose:
@@ -54,12 +58,12 @@ services:
     image: germanorizzo/fileconduit:latest
     container_name: fileconduit
     environment:
-      - FILECONDUIT_SECRET_HASH=<secret_hash>
+      - FILECONDUIT_SECRET_HASHES=<secret_hash[,<another_one>,...]>
     ports:
       - 8080:8080
 ```
 
-> **Note**: this will expose it on port 8080; if installing with a reverse proxy, you may want to use a docker network.
+> This will expose it on port 8080; if installing with a reverse proxy, you may want to use a docker network.
 
 ### Example: using `caddy` as a reverse proxy
 
@@ -73,30 +77,31 @@ conduit.example.com {
 
 ## Upload client
 
-Download the file `upload.py` from this repository. Configure it:
+Download the file `upload.py` or `upload.sh` from this repository, according to the technology you need.
 
-- **Line 24**: the secret
-- **Line 27**: the base URL that you exposed to internet (in the `caddy` example above, `https://conduit.example.com`)
+Configure it with the secret and the base URL that you exposed to internet (in the `caddy` example above, `https://conduit.example.com`)
 
 Then just launch it:
 
 ```bash
 python3 uploader.py myfile.bin
+# or
+bash uploader.sh myfile.bin
 ```
 
 This will output a link with the instructions to download. The link is unique and, while public, it's quite difficult to guess.
 
 ```
-== fileconduit v0.1.0 ==
+== fileconduit v0.2.0 ==
 All set up! Download your file:
-- a browser, from https://pipe.gercloud.cc/dl/4980907730449368564
-- a shell, with $> curl -OJ https://pipe.gercloud.cc/dl/4980907730449368564
+- a browser, from https://pipe.gercloud.cc/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
+- a shell, with $> curl -OJ https://pipe.gercloud.cc/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
 ```
 
 After a client initiates a download and the uploader sends all the data, the uploader script will exit.
 
 # Building the server
 
-In the gradle setup of this repository, use `gradle buildDocker`. This will generate a docker image tagged as `fileconduit:v0.1.0`.
+In the gradle setup of this repository, use `gradle buildDocker`. This will generate a docker image tagged as `fileconduit:v0.2.0`.
 
 `docker` and `docker buildx` must be properly installed and available.
