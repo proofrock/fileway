@@ -48,10 +48,14 @@ def upload_file(filepath):
             headers={ "x-fileconduit-secret": SECRET },
             timeout=30
         )
+        if init_response.status_code != 200:
+            print("Error in setting up: " + init_response.text)
+            return
+
         conduitId = init_response.text
 
         # Output the full conduit URL
-        print("== fileconduit v0.2.0 ==")
+        print("== fileconduit v0.3.0 ==")
         print("All set up! Download your file using:")
         print(f"- a browser, from {BASE_URL}/dl/{conduitId}")
         print(f"- a shell, with $> curl -OJ {BASE_URL}/dl/{conduitId}")
@@ -63,6 +67,9 @@ def upload_file(filepath):
                 f"{BASE_URL}/ping/{conduitId}",
                 headers={ "x-fileconduit-secret": SECRET },
                 timeout=30)
+            if init_response.status_code != 200:
+                print("Error in pinging: " + ping_response.text)
+                return
             if ping_response.text != "":
                 chunk_size = int(ping_response.text)
                 break
@@ -80,15 +87,18 @@ def upload_file(filepath):
                 data=chunk,
                 timeout=30
             )
+            if ul_response.status_code != 200:
+                print("Error in uploading: " + ul_response.text)
+                return
 
-            ul_response.raise_for_status()
+        print("All data sent. Bye!")
 
 # Example usage
 if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("== fileconduit v0.2.0 ==")
+        print("== fileconduit v0.3.0 ==")
         print("Usage: python fcuploader.py <file_path>")
         sys.exit(1)
 

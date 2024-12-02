@@ -1,10 +1,16 @@
-FROM eclipse-temurin:21-jre-alpine
+FROM golang:latest as build
 
-WORKDIR /app
-COPY build/libs/*.jar ./
+WORKDIR /go/src/app
+COPY src/ .
+
+RUN CGO_ENABLED=0 go build -o fileconduit -trimpath
+
+# Now copy it into our base image.
+FROM gcr.io/distroless/static-debian12
+COPY --from=build /go/src/app/fileconduit /
 
 ENV FILECONDUIT_SECRET_HASHES=""
 
 EXPOSE 8080
 
-CMD java -cp "*" it.germanorizzo.proj.fileconduit.Main
+ENTRYPOINT ["/fileconduit"]

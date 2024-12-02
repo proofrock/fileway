@@ -1,4 +1,4 @@
-# fileconduit v0.2.0
+# fileconduit v0.3.0
 
 `fileconduit` is a client/server application that aids to transfer files securely between two systems that access the 
 internet but don't access each other.
@@ -41,7 +41,7 @@ certain familiarity with `docker`, we won't explain all the concepts involved.
 
 ## Server
 
-It's a Java (21+) application, the best way is to install via docker.
+It's a Go application but it's tailor-made to be configured and installed via Docker.
 
 Get a server, ideally already provisioned with a reverse proxy. `fileconduit` is best not exposed directly to internet, 
 mainly because it doesn't provide HTTPS.
@@ -100,7 +100,7 @@ This will output a link with the instructions to download. The link is unique an
 to guess.
 
 ```
-== fileconduit v0.2.0 ==
+== fileconduit v0.3.0 ==
 All set up! Download your file:
 - a browser, from https://conduit.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
 - a shell, with $> curl -OJ https://conduit.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
@@ -110,7 +110,7 @@ After a client initiates a download and the fcuploader sends all the data, the f
 
 # Building the server
 
-In the gradle setup of this repository, use `gradle buildDocker`. This will generate a docker image tagged as 
-`fileconduit:v0.2.0`.
+In the root dir of this repository, use `docker buildx build . -t fileconduit:v0.3.0`. This will generate a docker image 
+tagged as `fileconduit:v0.3.0`.
 
 `docker` and `docker buildx` must be properly installed and available.
