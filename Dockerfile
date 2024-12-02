@@ -3,7 +3,7 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY build/libs/*.jar ./
 
-ENV FILECONDUIT_SECRET_HASH=""
+ENV FILECONDUIT_SECRET_HASHES=""
 
 EXPOSE 8080
 
