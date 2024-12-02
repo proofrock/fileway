@@ -1,4 +1,4 @@
-# fileconduit v0.3.0
+# fileconduit v0.3.1
 
 `fileconduit` is a client/server application that aids to transfer files securely between two systems that access the 
 internet but don't access each other.
@@ -17,8 +17,8 @@ executions. One download is possible for each, and the fcuploader script will ex
 
 # Quickstart/demo
 
-For a quick test of how it works, you can run it locally. Prerequisites are `docker` and `python` v3 with the `requests` 
-library, a file to upload, nothing else.
+For a quick test of how it works, you can run it locally. Prerequisites are `docker` and `python` v3, a file to 
+upload, nothing else.
 
 Run the server:
 
@@ -84,8 +84,7 @@ conduit.example.com {
 
 ## Upload client
 
-Download the file `upload.py` from this repository, according to the technology you need. Ensure to have the python
-library `requests` installed.
+Download the file `upload.py` from this repository.
 
 Configure it with the secret and the base URL that you exposed to internet (in the `caddy` example above, 
 `https://conduit.example.com`)
@@ -100,7 +99,7 @@ This will output a link with the instructions to download. The link is unique an
 to guess.
 
 ```
-== fileconduit v0.3.0 ==
+== fileconduit v0.3.1 ==
 All set up! Download your file:
 - a browser, from https://conduit.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
 - a shell, with $> curl -OJ https://conduit.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
@@ -110,7 +109,7 @@ After a client initiates a download and the fcuploader sends all the data, the f
 
 # Building the server
 
-In the root dir of this repository, use `docker buildx build . -t fileconduit:v0.3.0`. This will generate a docker image 
-tagged as `fileconduit:v0.3.0`.
+In the root dir of this repository, use `docker buildx build . -t fileconduit:v0.3.1`. This will generate a docker image 
+tagged as `fileconduit:v0.3.1`.
 
 `docker` and `docker buildx` must be properly installed and available.

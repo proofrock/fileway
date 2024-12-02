@@ -19,10 +19,12 @@ var (
 )
 
 func main() {
-	fmt.Println()
-	fmt.Println("========================")
-	fmt.Println("== fileconduit v0.3.0 ==")
-	fmt.Println("========================")
+	// https://manytools.org/hacker-tools/ascii-banner/, profile "Slant"
+	fmt.Println("    _____ __                          __      _ __ ")
+	fmt.Println("   / __(_) /__  _________  ____  ____/ /_  __(_) /_")
+	fmt.Println("  / /_/ / / _ \\/ ___/ __ \\/ __ \\/ __  / / / / / __/")
+	fmt.Println(" / __/ / /  __/ /__/ /_/ / / / / /_/ / /_/ / / /_  ")
+	fmt.Println("/_/ /_/_/\\___/\\___/\\____/_/ /_/\\__,_/\\__,_/_/\\__/ v0.3.1")
 	fmt.Println()
 
 	env := os.Getenv("FILECONDUIT_SECRET_HASHES")
@@ -87,7 +89,7 @@ func dl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; Filename=\"%s\"", conduit.Filename))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", conduit.Filename))
 	w.Header().Set("Content-Length", strconv.FormatInt(conduit.Size, 10))
 
 	transferred := int64(0)
