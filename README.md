@@ -1,4 +1,4 @@
-# fileconduit v0.3.1
+# fileconduit v0.3.2
 
 `fileconduit` is a client/server application that aids to transfer files securely between two systems that access the
 internet but don't access each other.
@@ -15,7 +15,7 @@ This will print a secure link to download the file from, using a browser or `cur
 `fileconduit` **transfers single files**: you can upload several files concurrently, with repeated `fcuploader.py`
 executions. One download is possible for each, and the fcuploader script will exit after successful download.
 
-# Quickstart/demo
+## Quickstart/demo
 
 For a quick test of how it works, you can run it locally. Prerequisites are `docker` and `python` v3, a file to
 upload, nothing else.
@@ -23,7 +23,7 @@ upload, nothing else.
 Run the server:
 
 ```bash
-docker run --rm -p 8080:8080 -e FILECONDUIT_SECRET_HASHES=652c7dc687d98c9889304ed2e408c74b611e86a40caa51c4b43f1dd5913c5cd0 germanorizzo/fileconduit:latest
+docker run --rm -p 8080:8080 -e FILECONDUIT_SECRET_HASHES=652c7dc687d98c9889304ed2e408c74b611e86a40caa51c4b43f1dd5913c5cd0 ghcr.io/proofrock/fileconduit:latest
 ```
 
 Then download `fcuploader.py` from this repository and run it in another console:
@@ -34,12 +34,12 @@ python3 fcuploader.py myfile.bin
 
 And follow the instructions to download the file.
 
-# Installation/usage
+## Installation/usage
 
 This section expands on the previous, to explain how to set up `fileconduit` in a proper architecture. It assumes a
 certain familiarity with `docker`, we won't explain all the concepts involved.
 
-## Server
+### Server
 
 It's a Go application but it's tailor-made to be configured and installed via Docker.
 
@@ -53,15 +53,15 @@ SHA256 using for example [this site](https://emn178.github.io/online-tools/sha25
 > You can generate several hashes, and specify them as a comma-separated list.
 
 ```bash
-docker run --name fileconduit -p 8080:8080 -e FILECONDUIT_SECRET_HASHES=<secret_hash[,<another_one>,...]> germanorizzo/fileconduit:latest
+docker run --name fileconduit -p 8080:8080 -e FILECONDUIT_SECRET_HASHES=<secret_hash[,<another_one>,...]> ghcr.io/proofrock/fileconduit:latest
 ```
 
 Or, via docker compose:
 
-```
+```yaml
 services:
   fileconduit:
-    image: germanorizzo/fileconduit:latest
+    image: ghcr.io/proofrock/fileconduit:latest
     container_name: fileconduit
     environment:
       - FILECONDUIT_SECRET_HASHES=<secret_hash[,<another_one>,...]>
@@ -72,17 +72,17 @@ services:
 > This will expose it on port 8080; if installing with a reverse proxy, you may want to set up a docker network. You can
 > set `internal: true` on it, `fileconduit` doesn't need to access any other system other than the reverse proxy.  
 
-### Example: using `caddy` as a reverse proxy
+#### Example: using `caddy` as a reverse proxy
 
 This is an excerpt of a `caddyfile`:
 
-```
+```caddyfile
 conduit.example.com {
   reverse_proxy localhost:8080
 }
 ```
 
-## Upload client
+### Upload client
 
 Download the file `upload.py` from this repository.
 
@@ -98,8 +98,8 @@ python3 fcuploader.py myfile.bin
 This will output a link with the instructions to download. The link is unique and, while public, it's quite difficult
 to guess.
 
-```
-== fileconduit v0.3.1 ==
+```text
+== fileconduit v0.3.2 ==
 All set up! Download your file using:
 - a browser, from https://conduit.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
 - a shell, with $> curl -OJ https://conduit.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
@@ -107,9 +107,9 @@ All set up! Download your file using:
 
 After a client initiates a download and the fcuploader sends all the data, the fcuploader script will exit.
 
-# Building the server
+## Building the server
 
-In the root dir of this repository, use `docker buildx build . -t fileconduit:v0.3.1`. This will generate a docker image
-tagged as `fileconduit:v0.3.1`.
+In the root dir of this repository, use `docker buildx build . -t fileconduit:v0.3.2`. This will generate a docker image
+tagged as `fileconduit:v0.3.2`.
 
 `docker` and `docker buildx` must be properly installed and available.

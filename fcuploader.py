@@ -103,7 +103,7 @@ def upload_file(filepath):
 if __name__ == "__main__":
     import sys
 
-    print("== fileconduit v0.3.1 ==")
+    print("== fileconduit v0.3.2 ==")
     
     if len(sys.argv) < 2:
         print("Usage: python fcuploader.py <file_path>")
