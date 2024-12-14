@@ -72,7 +72,7 @@ func getConduit(r *string) *Conduit {
 	conduitsMu.RLock()
 	defer conduitsMu.RUnlock()
 
-	conduit, _ := conduits[conduitId]
+	conduit := conduits[conduitId]
 	return conduit
 }
 
