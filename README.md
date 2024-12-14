@@ -39,6 +39,8 @@ And follow the instructions to download the file.
 This section expands on the previous, to explain how to set up `fileconduit` in a proper architecture. It assumes a
 certain familiarity with `docker`, we won't explain all the concepts involved.
 
+A multi-arch docker image (AMD64, AARCH64 and ARMv7) is available on the 'Packages' section of this repository. The client python script to upload files is available in the 'Releases' section.
+
 ### Server
 
 It's a Go application but it's tailor-made to be configured and installed via Docker.
