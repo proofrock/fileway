@@ -1,3 +1,3 @@
 module github.com/proofrock/fileconduit
 
-go 1.23.3
+go 1.23.5
