@@ -8,9 +8,8 @@ import (
 )
 
 const (
-	IdsLength      = 33       // Length of ID random strings, amounts to 192 bit
-	ChunkSize      = 16777216 // 16Mb
-	ChunkQueueSize = 4        // 64Mb total memory
+	IdsLength = 33      // Length of ID random strings, amounts to 192 bit
+	ChunkSize = 4194304 // 16Mb
 )
 
 type Conduit struct {
@@ -30,7 +29,7 @@ func NewConduit(filename string, size int64, secret string) *Conduit {
 		Filename:   filename,
 		Size:       size,
 		secret:     secret,
-		ChunkQueue: make(chan []byte, ChunkQueueSize),
+		ChunkQueue: make(chan []byte, 1),
 		mu:         sync.Mutex{},
 	}
 	ret.touch()
