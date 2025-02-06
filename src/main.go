@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"io"
 	"log"
@@ -17,6 +18,9 @@ var (
 	secretHashes = make(map[string]bool)
 	conduitsMu   sync.RWMutex
 )
+
+//go:embed webui/index.html
+var indexHTML []byte
 
 func main() {
 	// https://manytools.org/hacker-tools/ascii-banner/, profile "Slant"
@@ -48,6 +52,10 @@ func main() {
 	http.HandleFunc("/setup", setup)
 	http.HandleFunc("/ping/", ping)
 	http.HandleFunc("/ul/", ul)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write(indexHTML)
+	})
 
 	log.Println("Starting server on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
