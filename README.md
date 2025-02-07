@@ -1,7 +1,5 @@
 # 🚠 fileway v0.4.0
 
-[[TOC]]
-
 `fileway` is a client/server application that accepts an upload of a single file; it blocks the upload until a download is initiated, then processes the upload and sends the data to the downloading client. It can be used to transfer files from a server to another, if the two servers don't easily "see" each other, by being installed to a third server (on the internet) that they both see.
 
 ![Sequence diagram](resources/sequence_diagram.png)
@@ -40,8 +38,7 @@ It's a Go application but it's tailor-made to be configured and installed via Do
 
 Get a server, ideally already provisioned with a reverse proxy. `fileway` is best not exposed directly to internet, mainly because it doesn't provide HTTPS.
 
-Generate a secret, best a long (24+) sequence of letters and numbers (to avoid escaping problems), and hash it with SHA256 using for example [this site](https://emn178.github.io/online-tools/sha256.html) that, at time of writing, doesn't seem to send your secret over the intenet
-(check!).
+Generate a secret, best a long (24+) sequence of letters and numbers (to avoid escaping problems), and hash it with SHA256 using for example [this site](https://emn178.github.io/online-tools/sha256.html) that, at time of writing, doesn't seem to send your secret over the intenet (check!).
 
 > 💡 You can generate several hashes, and specify them as a comma-separated list.
 
@@ -102,8 +99,7 @@ Then just launch it:
 python3 fileway_ul.py myfile.bin
 ```
 
-This will output a link with the instructions to download. The link is unique and, while public, it's quite difficult
-to guess.
+This will output a link with the instructions to download. The link is unique and, while public, it's quite difficult to guess.
 
 ```text
 == fileway v0.4.0 ==
@@ -114,13 +110,14 @@ All set up! Download your file using:
 
 After a client initiates a download and the `fileway_ul.py` sends all the data, the `fileway_ul.py` script will exit.
 
+#### User Agent filtering
+
+Many services that may be use to send the download link to the recipient (e.g. Whatsapp, Teams, Slack...) will try to display a preview of the link. This would make the link expire, of course: it's an one time link, after all.
+
+In order to try and mitigate this, the user agent of a download call is searched in [this blacklist](https://raw.githubusercontent.com/monperrus/crawler-user-agents/refs/heads/master/crawler-user-agents.json) [MIT License]. If it's found, a generic text is displayed.
+
 ## Building the server
 
-In the root dir of this repository, use `docker buildx build . -f Dockerfile.simple -t fileway:v0.4.0`. This will generate a docker image
-tagged as `fileway:v0.4.0`.
+In the root dir of this repository, use `docker buildx build . -f Dockerfile.simple -t fileway:v0.4.0`. This will generate a docker image tagged as `fileway:v0.4.0`.
 
 `docker` and `docker buildx` must be properly installed and available.
-
-## Known issues (and non-issues)
-
-- Sharing a link on applications that try to preview them will make the link expire, being it a one timelink. E.g. whatsapp, MS teams, Slack... See Issue #1
