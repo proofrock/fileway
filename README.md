@@ -1,4 +1,4 @@
-# 🚠 fileway v0.4.0
+# 🚠 fileway v0.4.1
 
 `fileway` is a client/server application that accepts an upload of a single file; it blocks the upload until a download is initiated, then processes the upload and sends the data to the downloading client. It can be used to transfer files from a server to another, if the two servers don't easily "see" each other, by being installed to a third server (on the internet) that they both see.
 
@@ -102,7 +102,7 @@ python3 fileway_ul.py myfile.bin
 This will output a link with the instructions to download. The link is unique and, while public, it's quite difficult to guess.
 
 ```text
-== fileway v0.4.0 ==
+== fileway v0.4.1 ==
 All set up! Download your file using:
 - a browser, from https://fileway.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
 - a shell, with $> curl -OJ https://fileway.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
@@ -118,6 +118,6 @@ In order to try and mitigate this, the user agent of a download call is searched
 
 ## Building the server
 
-In the root dir of this repository, use `docker buildx build . -f Dockerfile.simple -t fileway:v0.4.0`. This will generate a docker image tagged as `fileway:v0.4.0`.
+In the root dir of this repository, use `docker buildx build . -f Dockerfile.simple -t fileway:v0.4.1`. This will generate a docker image tagged as `fileway:v0.4.1`.
 
 `docker` and `docker buildx` must be properly installed and available.
