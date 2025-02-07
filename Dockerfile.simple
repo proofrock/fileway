@@ -1,7 +1,10 @@
-FROM golang:latest as build
+FROM golang:latest AS build
 
 WORKDIR /go/src/app
 COPY src/ .
+
+RUN curl -O https://raw.githubusercontent.com/monperrus/crawler-user-agents/refs/heads/master/crawler-user-agents.json
+RUN mv crawler-user-agents.json blacklist/
 
 RUN CGO_ENABLED=0  go build -trimpath -a -o fileway -tags="netgo osusergo" -ldflags='-w -extldflags "-static"'
 

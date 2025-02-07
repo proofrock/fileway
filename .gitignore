@@ -1,5 +1,6 @@
 randomfile*
 src/fileway
+src/blacklist/crawler-user-agents.json
 
 # Created by https://www.toptal.com/developers/gitignore/api/intellij+all,go
 # Edit at https://www.toptal.com/developers/gitignore?templates=intellij+all,go

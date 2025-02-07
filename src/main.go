@@ -37,11 +37,11 @@ var indexHTML []byte
 
 func main() {
 	// https://manytools.org/hacker-tools/ascii-banner/, profile "Slant"
-	fmt.Println("    _____ __                        ")
+	fmt.Println("    _____ __")
 	fmt.Println("   / __(_) /__ _      ______ ___  __")
 	fmt.Println("  / /_/ / / _ \\ | /| / / __ `/ / / /")
-	fmt.Println(" / __/ / /  __/ |/ |/ / /_/ / /_/ / ")
-	fmt.Println("/_/ /_/_/\\___/|__/|__/\\__,_/\\__, /  ")
+	fmt.Println(" / __/ / /  __/ |/ |/ / /_/ / /_/ /")
+	fmt.Println("/_/ /_/_/\\___/|__/|__/\\__,_/\\__, /")
 	fmt.Println("                           /____/ v0.0.0")
 	fmt.Println()
 
@@ -52,6 +52,8 @@ func main() {
 	for _, s := range strings.Split(env, ",") {
 		secretHashes[strings.ToLower(s)] = true
 	}
+
+	log.Printf("Loaded %d user agents to blacklist\n", crawlerNum.Load())
 
 	// Setup periodic cleanup
 	go func() {
@@ -99,6 +101,12 @@ func getConduit(r *string) *Conduit {
 }
 
 func dl(w http.ResponseWriter, r *http.Request) {
+	if IsUserAgentBlacklisted(r.UserAgent()) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte("Fileway file transfer service"))
+		return
+	}
+
 	conduit := getConduit(&r.URL.Path)
 	if conduit == nil {
 		http.Error(w, "Conduit Not Found", http.StatusNotFound)
