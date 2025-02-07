@@ -1,0 +1,27 @@
+FROM golang:latest as build
+
+WORKDIR /go/src/app
+COPY src/ .
+
+RUN CGO_ENABLED=0  go build -trimpath -a -o fileway -tags="netgo osusergo" -ldflags='-w -extldflags "-static"'
+
+# Now copy it into our base image.
+FROM caddy:latest
+
+COPY --from=build /go/src/app/fileway /
+
+RUN echo '
+{
+    email {$TLS_EMAIL}
+}
+
+{$BASE_ADDRESS} {
+    reverse_proxy localhost:8080
+}
+' > /etc/caddy/Caddyfile
+
+ENV FILEWAY_SECRET_HASHES=""
+
+EXPOSE 80 443
+
+CMD ["/bin/sh", "-c", "/fileway & caddy run --config /etc/caddy/Caddyfile"]
