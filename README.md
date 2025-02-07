@@ -1,19 +1,10 @@
 # 🚠 fileway v0.4.0
 
+[[TOC]]
+
 `fileway` is a client/server application that accepts an upload of a single file; it blocks the upload until a download is initiated, then processes the upload and sends the data to the downloading client. It can be used to transfer files from a server to another, if the two servers don't easily "see" each other, by being installed to a third server (on the internet) that they both see.
 
-```mermaid
-sequenceDiagram
-    participant Uploader as Uploader
-    participant Fileway as Fileway
-    participant Downloader as Downloader
-
-    Uploader->>Fileway: Initiate upload
-    Uploader-->>Uploader: Wait for download
-    Downloader->>Fileway: Request file
-    Uploader->>Fileway: Send file data
-    Fileway->>Downloader: Download file
-```
+![Sequence diagram](resources/sequence_diagram.png)
 
 The transfer is secure: a unique link is generated, and you should only take care to serve it via HTTPS (see the relevant section below).
 
@@ -130,6 +121,6 @@ tagged as `fileway:v0.4.0`.
 
 `docker` and `docker buildx` must be properly installed and available.
 
-## Known issues
+## Known issues (and non-issues)
 
-- The web UI doesn't work correctly on phones (at least iPhones). When the browser goes in background, it thinks it can send the file, but it gets lost.
+- Sharing a link on applications that try to preview them will make the link expire, being it a one timelink. E.g. whatsapp, MS teams, Slack... See Issue #1
