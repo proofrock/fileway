@@ -1,3 +1,20 @@
+// Copyright (C) 2024- Germano Rizzo
+//
+// This file is part of fileway.
+//
+// fileway is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// fileway is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with fileway.  If not, see <http://www.gnu.org/licenses/>.
+
 package main
 
 import (
@@ -24,16 +41,17 @@ var indexHTML []byte
 
 func main() {
 	// https://manytools.org/hacker-tools/ascii-banner/, profile "Slant"
-	fmt.Println("    _____ __                          __      _ __ ")
-	fmt.Println("   / __(_) /__  _________  ____  ____/ /_  __(_) /_")
-	fmt.Println("  / /_/ / / _ \\/ ___/ __ \\/ __ \\/ __  / / / / / __/")
-	fmt.Println(" / __/ / /  __/ /__/ /_/ / / / / /_/ / /_/ / / /_  ")
-	fmt.Println("/_/ /_/_/\\___/\\___/\\____/_/ /_/\\__,_/\\__,_/_/\\__/ v0.0.0")
+	fmt.Println("    _____ __                        ")
+	fmt.Println("   / __(_) /__ _      ______ ___  __")
+	fmt.Println("  / /_/ / / _ \\ | /| / / __ `/ / / /")
+	fmt.Println(" / __/ / /  __/ |/ |/ / /_/ / /_/ / ")
+	fmt.Println("/_/ /_/_/\\___/|__/|__/\\__,_/\\__, /  ")
+	fmt.Println("                           /____/ v0.0.0")
 	fmt.Println()
 
-	env := os.Getenv("FILECONDUIT_SECRET_HASHES")
+	env := os.Getenv("FILEWAY_SECRET_HASHES")
 	if env == "" {
-		log.Fatal("FATAL: missing environment variable FILECONDUIT_SECRET_HASHES")
+		log.Fatal("FATAL: missing environment variable FILEWAY_SECRET_HASHES")
 	}
 	for _, s := range strings.Split(env, ",") {
 		secretHashes[strings.ToLower(s)] = true
@@ -126,7 +144,7 @@ func dl(w http.ResponseWriter, r *http.Request) {
 }
 
 func setup(w http.ResponseWriter, r *http.Request) {
-	passedSecret := r.Header.Get("x-fileconduit-secret")
+	passedSecret := r.Header.Get("x-fileway-secret")
 	if !secretHashes[sha256Hex(passedSecret)] {
 		http.Error(w, "Secret Mismatch", http.StatusUnauthorized)
 		return
@@ -156,7 +174,7 @@ func ping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	passedSecret := r.Header.Get("x-fileconduit-secret")
+	passedSecret := r.Header.Get("x-fileway-secret")
 	if conduit.IsUploadSecretWrong(passedSecret) {
 		http.Error(w, "Secret Mismatch", http.StatusUnauthorized)
 		return
@@ -176,7 +194,7 @@ func ul(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	passedSecret := r.Header.Get("x-fileconduit-secret")
+	passedSecret := r.Header.Get("x-fileway-secret")
 	if conduit.IsUploadSecretWrong(passedSecret) {
 		http.Error(w, "Secret Mismatch", http.StatusUnauthorized)
 		return

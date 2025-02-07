@@ -18,7 +18,7 @@
 
 <body class="d-flex justify-content-center align-items-start vh-100" style="background-color: #EFEFE0;">
     <div class="container shadow p-4 bg-white rounded text-center mt-4" style="max-width: 450px;">
-        <h2 class="mb-3">fileconduit Web UI</h2>
+        <h2 class="mb-3">fileway Web UI</h2>
         <hr />
         <div class="mb-2">
             <input type="password" class="form-control" id="secret" placeholder="Secret">
@@ -64,7 +64,7 @@
             try {
                 const setupUrl = `${baseUrl}/setup?filename=${encodeURIComponent(file.name)}&size=${file.size}`;
                 const setupResponse = await fetch(setupUrl, {
-                    headers: { 'x-fileconduit-secret': secret }
+                    headers: { 'x-fileway-secret': secret }
                 });
 
                 if (!setupResponse.ok) {
@@ -84,7 +84,7 @@
                 status2.textContent = `Leave this page open.`;
                 while (true) {
                     const pingResponse = await fetch(`${baseUrl}/ping/${conduitId}`, {
-                        headers: { 'x-fileconduit-secret': secret }
+                        headers: { 'x-fileway-secret': secret }
                     });
                     const pingText = await pingResponse.text();
                     if (pingText) {
@@ -105,7 +105,7 @@
                     const chunk = file.slice(offset, offset + chunkSize);
                     const uploadResponse = await fetch(`${baseUrl}/ul/${conduitId}`, {
                         method: 'PUT',
-                        headers: { 'x-fileconduit-secret': secret },
+                        headers: { 'x-fileway-secret': secret },
                         body: chunk
                     });
 

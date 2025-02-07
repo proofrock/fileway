@@ -2,20 +2,20 @@
 #
 # Copyright (C) 2024- Germano Rizzo
 #
-# This file is part of fileconduit.
+# This file is part of fileway.
 #
-# fileconduit is free software: you can redistribute it and/or modify
+# fileway is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# fileconduit is distributed in the hope that it will be useful,
+# fileway is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with fileconduit.  If not, see <http://www.gnu.org/licenses/>.
+# along with fileway.  If not, see <http://www.gnu.org/licenses/>.
 #
 import os
 
@@ -43,7 +43,7 @@ def upload_file(filepath):
         # Setup transmission
         setup_url = f"{BASE_URL}/setup?filename={urllib.parse.quote(filename)}&size={filesize}"
         setup_req = urllib.request.Request(setup_url)
-        setup_req.add_header("x-fileconduit-secret", SECRET)
+        setup_req.add_header("x-fileway-secret", SECRET)
         
         try:
             with urllib.request.urlopen(setup_req, timeout=30) as response:
@@ -63,7 +63,7 @@ def upload_file(filepath):
                 while True:
                     ping_url = f"{BASE_URL}/ping/{conduitId}"
                     ping_req = urllib.request.Request(ping_url)
-                    ping_req.add_header("x-fileconduit-secret", SECRET)
+                    ping_req.add_header("x-fileway-secret", SECRET)
                     
                     with urllib.request.urlopen(ping_req, timeout=30) as ping_response:
                         ping_text = ping_response.read().decode('utf-8')
@@ -85,7 +85,7 @@ def upload_file(filepath):
                             method='PUT',
                             data=chunk
                         )
-                        ul_req.add_header("x-fileconduit-secret", SECRET)
+                        ul_req.add_header("x-fileway-secret", SECRET)
                         
                         with urllib.request.urlopen(ul_req, timeout=30) as ul_response:
                             if ul_response.status != 200:
@@ -103,10 +103,10 @@ def upload_file(filepath):
 if __name__ == "__main__":
     import sys
 
-    print("== fileconduit v0.3.2 ==")
+    print("== fileway v0.3.2 ==")
     
     if len(sys.argv) < 2:
-        print("Usage: python fcuploader.py <file_path>")
+        print("Usage: python fileway_ul.py <file_path>")
         sys.exit(1)
     
     # Check if file exists
