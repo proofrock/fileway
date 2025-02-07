@@ -8,6 +8,19 @@ Uploads can be done with a web interface, or via a python3 script; downloads via
 
 `fileway` doesn't store anything on the server, it just keeps a buffer to make transfers smooth. It doesn't have any dependency other than `go`. It's distributed as a docker image, but you can easily build it yourself.
 
+```mermaid
+sequenceDiagram
+    participant Uploader as Uploader
+    participant Fileway as Fileway
+    participant Downloader as Downloader
+
+    Uploader->>Fileway: Initiate upload
+    Uploader-->>Uploader: Wait for download
+    Downloader->>Fileway: Request file
+    Uploader->>Fileway: Send file data
+    Fileway->>Downloader: Download file
+```
+
 ## Quickstart/demo
 
 For a quick test of how it works, you can run it locally. Prerequisites are `docker`, a file to
