@@ -47,6 +47,8 @@ jobs:
           - linux/amd64
           - linux/arm/v7
           - linux/arm64
+    env:
+      PLATFORM_PAIR: "xxx"
     steps:
       - name: Prepare
         run: |
@@ -54,7 +56,7 @@ jobs:
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Modify fileway
+      - name: Modify version (main go file)
         run: sed -i 's/v0\.0\.0/${{ github.ref_name }}/g' main.go
         working-directory: src/
       - name: Docker meta
