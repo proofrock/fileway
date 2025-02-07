@@ -3,7 +3,7 @@ FROM golang:latest as build
 WORKDIR /go/src/app
 COPY src/ .
 
-RUN CGO_ENABLED=0 go build -o fileway -trimpath
+RUN CGO_ENABLED=0  go build -trimpath -a -o fileway -tags="netgo osusergo" -ldflags='-w -extldflags "-static"'
 
 # Now copy it into our base image.
 FROM gcr.io/distroless/static-debian12
