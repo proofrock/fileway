@@ -14,7 +14,7 @@
 #  limitations under the License.
  
 import os
-
+import math
 import time
 import urllib.request
 import urllib.error
@@ -70,7 +70,13 @@ def upload_file(filepath):
 
                 # Open file and upload chunks
                 with open(filepath, 'rb') as file:
+                    laps = math.ceil(filesize/chunk_size)
+                    lap = 1
+                    print("", end="\r")
                     while True:
+                        print(f"Uploading chunk {lap}/{laps}...", end="\r")
+                        lap += 1
+
                         chunk = file.read(chunk_size)
                         if len(chunk) == 0:
                             break
@@ -88,7 +94,7 @@ def upload_file(filepath):
                                 print("Error in uploading: " + ul_response.read().decode('utf-8'))
                                 return
 
-                print("All data sent. Bye!")
+                print("All data sent. Bye!             ")
 
         except urllib.error.URLError as e:
             print(f"URL Error: {e}")
@@ -102,7 +108,7 @@ if __name__ == "__main__":
     print("== fileway v0.4.1 ==")
     
     if len(sys.argv) < 2:
-        print("Usage: python fileway_ul.py <file_path>")
+        print("Usage: python3 fileway_ul.py <file_path>")
         sys.exit(1)
     
     # Check if file exists
