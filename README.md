@@ -2,9 +2,7 @@
 
 ## tl;dr
 
-`fileway` is a web service that allow an user to upload a file, and another to download it at the same time. Neither party accesses the other's system, both contact a third server - where `fileway` is installed. Both upload and download can be made using a browser or the commandline.
-
-Think `scp` but the parties do not need to access each other system and it's web-enabled. Think WeTransfer™, but online, shell-enabled and without storing anything on the third server.
+Fileway is a real-time file transfer service that works through a web browser or command line. It lets two users exchange files through an intermediary server without storing data or requiring direct access to each other's systems - like a live-streaming version of WeTransfer™.
 
 ## Overview
 
