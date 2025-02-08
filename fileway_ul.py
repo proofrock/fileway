@@ -105,7 +105,7 @@ def upload_file(filepath):
 if __name__ == "__main__":
     import sys
 
-    print("== fileway v0.4.1 ==")
+    print("== fileway v0.5.0 ==")
     
     if len(sys.argv) < 2:
         print("Usage: python3 fileway_ul.py <file_path>")

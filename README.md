@@ -1,4 +1,4 @@
-# 🚠 fileway v0.4.1
+# 🚠 fileway v0.5.0
 
 ## tl;dr
 
@@ -105,7 +105,7 @@ python3 fileway_ul.py myfile.bin
 This will output a link with the instructions to download. The link is unique and, while public, it's quite difficult to guess.
 
 ```text
-== fileway v0.4.1 ==
+== fileway v0.5.0 ==
 All set up! Download your file using:
 - a browser, from https://fileway.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
 - a shell, with $> curl -OJ https://fileway.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
@@ -119,7 +119,7 @@ The link provided by the uploads clients will open a download page when opened i
 
 ## Building the server
 
-In the root dir of this repository, use `docker buildx build . -f Dockerfile.simple -t fileway:v0.4.1`. This will generate a docker image tagged as `fileway:v0.4.1`.
+In the root dir of this repository, use `docker buildx build . -f Dockerfile.simple -t fileway:v0.5.0`. This will generate a docker image tagged as `fileway:v0.5.0`.
 
 `docker` and `docker buildx` must be properly installed and available.
 
