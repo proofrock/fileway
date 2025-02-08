@@ -15,8 +15,6 @@ package main
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
 	"math/big"
 )
 
@@ -29,9 +27,4 @@ func genRandomString(length int) string {
 		result[i] = alphabet[n.Int64()]
 	}
 	return string(result)
-}
-
-func sha256Hex(input string) string {
-	hash := sha256.Sum256([]byte(input))
-	return hex.EncodeToString(hash[:])
 }
