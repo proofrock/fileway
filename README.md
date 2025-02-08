@@ -2,8 +2,9 @@
 
 `fileway` is a client/server application that accepts an upload of a single file; it blocks the upload until a download is initiated, then processes the upload and sends the data to the downloading client. It can be used to transfer files from a server to another, if the two servers don't easily "see" each other, by being installed to a third server (on the internet) that they both see.
 
-![Sequence diagram](resources/sequence_diagram.png)
-
+![Sequence diagram](resources/seq_diagram.png)
+<br>
+<br>
 The transfer is secure: a unique link is generated, and you should only take care to serve it via HTTPS (see the relevant section below).
 
 Uploads can be done with a web interface - works on mobile, too - or via a python3 script, for shells. Downloads can be done via a browser or using the commandline, e.g. `curl`. The uploading script or web session must be kept online until the transfer is done. Of course, multiple concurrent transfers are possible, and it transfers one file at a time.
@@ -19,6 +20,8 @@ Run the server:
 ```bash
 docker run --rm -p 8080:8080 -e FILEWAY_SECRET_HASHES='$2a$10$I.NhoT1acD9XkXmXn1IMSOp0qhZDd63iSw1RfHZP7nzyg/ItX5eVa' ghcr.io/proofrock/fileway:latest
 ```
+
+> ❗ Please note the single quotes around the secret. It contains some `$`, so if you use a double quote, bash will treat them as env vars.
 
 Then open [http://localhost:8080](http://localhost:8080) to access the web page. Put `mysecret` as the secret, and choose a file. Press the Upload button.
 
@@ -102,11 +105,9 @@ All set up! Download your file using:
 
 After a client initiates a download and the `fileway_ul.py` sends all the data, the `fileway_ul.py` script will exit.
 
-#### User Agent filtering
+### Download link
 
-Many services that may be use to send the download link to the recipient (e.g. Whatsapp, Teams, Slack...) will try to display a preview of the link. This would make the link expire, of course: it's an one time link, after all.
-
-In order to try and mitigate this, the user agent of a download call is searched in [this blacklist](https://raw.githubusercontent.com/monperrus/crawler-user-agents/refs/heads/master/crawler-user-agents.json) [MIT License]. If it's found, a generic text is displayed.
+The link provided by the uploads clients will open a download page when opened in a browser, and will download the file when opened with a CLI application. To better understand how this is done, and troubleshoot, please read the 'Understanding the download URL' section.
 
 ## Building the server
 
@@ -130,6 +131,18 @@ To hash a secret using BCrypt, you can:
   ```bash
   docker run --rm caddy caddy hash-password -p 'mysecret'
   ```
+
+### Understanding the download URL
+
+Many apps that you may use to send the download URL to someone - Whatsapp, Slack, etc. - display a preview of any link you're pasting. So, if the link was one-time, it would be "used" and made invalid. 
+
+The download link points to an intermediate web page, with a download button. This way, an app would see that page, not the download link.
+
+In the case of a commandline app, we don't want the intermediate page. `fileway` reads the `User-Agent` header of the request, and if it detects a CLI app, just serves the file instead of the page.
+
+It should work for `curl`, `wget`, `HTTPie`, `aria2` and `axel`. Please report any more tool, I can probably support it.
+
+At any rate, you can force the download by replacing the service in the URL. The usual link is `.../dl/...` while replacing that part with `.../ddl/...` will give you a direct download of the file. Just don't share it over Whatsapp, it will spoil it!
 
 ### Using `caddy` as an external reverse proxy
 

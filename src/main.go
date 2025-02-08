@@ -35,17 +35,32 @@ var (
 	passwords    sync.Map
 )
 
-//go:embed webui/index.html
-var indexHTML []byte
+//go:embed webui/upload.html
+var uploadPage []byte
+
+//go:embed webui/download.html
+var downloadPage []byte
+
+const VERSION = "v0.0.0"
+
+func replace(src []byte, toreplace, replacer string) []byte {
+	ret := string(src)
+	ret = strings.ReplaceAll(ret, toreplace, replacer)
+	return []byte(ret)
+}
 
 func main() {
+	// Replaces version in the web pages
+	downloadPage = replace(downloadPage, "#VERSION#", VERSION)
+	uploadPage = replace(uploadPage, "#VERSION#", VERSION)
+
 	// https://manytools.org/hacker-tools/ascii-banner/, profile "Slant"
 	fmt.Println("    _____ __")
 	fmt.Println("   / __(_) /__ _      ______ ___  __")
 	fmt.Println("  / /_/ / / _ \\ | /| / / __ `/ / / /")
 	fmt.Println(" / __/ / /  __/ |/ |/ / /_/ / /_/ /")
 	fmt.Println("/_/ /_/_/\\___/|__/|__/\\__,_/\\__, /")
-	fmt.Println("                           /____/ v0.0.0")
+	fmt.Println("                           /____/ " + VERSION)
 	fmt.Println()
 
 	env := os.Getenv("FILEWAY_SECRET_HASHES")
@@ -56,8 +71,6 @@ func main() {
 		secretHashes = append(secretHashes, []byte(s))
 	}
 
-	log.Printf("Loaded %d user agents to blacklist\n", crawlerNum.Load())
-
 	// Setup periodic cleanup
 	go func() {
 		ticker := time.NewTicker(1 * time.Minute)
@@ -67,13 +80,14 @@ func main() {
 	}()
 
 	// Routes
-	http.HandleFunc("/dl/", dl)
+	http.HandleFunc("/dl/", dl)   // Shows a download page, if downloader "looks like" CLI redirects to ddl
+	http.HandleFunc("/ddl/", ddl) // Direct download
 	http.HandleFunc("/setup", setup)
 	http.HandleFunc("/ping/", ping)
 	http.HandleFunc("/ul/", ul)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		w.Write(indexHTML)
+		w.Write(uploadPage)
 	})
 
 	log.Println("Starting server on :8080")
@@ -116,13 +130,22 @@ func authenticate(pwd string) bool {
 	return false
 }
 
+// This is the basic handler for downloads; it shows a download page
+// unless the user agent "appears" to come from a CLI application.
+// In this case, forwards control to ddl(w, r) that directly downloads
+// the file.
 func dl(w http.ResponseWriter, r *http.Request) {
-	if IsUserAgentBlacklisted(r.UserAgent()) {
-		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte("Fileway file transfer service"))
-		return
+	switch strings.Split(r.UserAgent(), "/")[0] {
+	case "curl", "Wget", "HTTPie", "aria2", "Axel":
+		ddl(w, r)
+	default:
+		w.Header().Set("Content-Type", "text/html")
+		w.Write(downloadPage)
 	}
+}
 
+// directly download of the file
+func ddl(w http.ResponseWriter, r *http.Request) {
 	conduit := getConduit(&r.URL.Path)
 	if conduit == nil {
 		http.Error(w, "Conduit Not Found", http.StatusNotFound)
