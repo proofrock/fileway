@@ -20,7 +20,7 @@ import urllib.request
 import urllib.error
 
 # Secret for uploading
-SECRET = "mysecret" # Hashes to 652c7dc687d98c9889304ed2e408c74b611e86a40caa51c4b43f1dd5913c5cd0
+SECRET = "mysecret" # Hashes to $2a$10$I.NhoT1acD9XkXmXn1IMSOp0qhZDd63iSw1RfHZP7nzyg/ItX5eVa
 
 # Base URL for all HTTP requests
 BASE_URL = "http://localhost:8080"

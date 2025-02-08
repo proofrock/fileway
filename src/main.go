@@ -24,12 +24,15 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
 	conduits     = make(map[string]*Conduit)
-	secretHashes = make(map[string]bool)
+	secretHashes = make([][]byte, 0)
 	conduitsMu   sync.RWMutex
+	passwords    sync.Map
 )
 
 //go:embed webui/index.html
@@ -50,7 +53,7 @@ func main() {
 		log.Fatal("FATAL: missing environment variable FILEWAY_SECRET_HASHES")
 	}
 	for _, s := range strings.Split(env, ",") {
-		secretHashes[strings.ToLower(s)] = true
+		secretHashes = append(secretHashes, []byte(s))
 	}
 
 	log.Printf("Loaded %d user agents to blacklist\n", crawlerNum.Load())
@@ -98,6 +101,19 @@ func getConduit(r *string) *Conduit {
 
 	conduit := conduits[conduitId]
 	return conduit
+}
+
+func authenticate(pwd string) bool {
+	if _, ok := passwords.Load(pwd); ok {
+		return true
+	}
+	for _, hash := range secretHashes {
+		if err := bcrypt.CompareHashAndPassword(hash, []byte(pwd)); err == nil {
+			passwords.Store(pwd, true)
+			return true
+		}
+	}
+	return false
 }
 
 func dl(w http.ResponseWriter, r *http.Request) {
@@ -149,7 +165,7 @@ func dl(w http.ResponseWriter, r *http.Request) {
 
 func setup(w http.ResponseWriter, r *http.Request) {
 	passedSecret := r.Header.Get("x-fileway-secret")
-	if !secretHashes[sha256Hex(passedSecret)] {
+	if !authenticate(passedSecret) {
 		http.Error(w, "Secret Mismatch", http.StatusUnauthorized)
 		return
 	}

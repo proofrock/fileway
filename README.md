@@ -17,7 +17,7 @@ For a quick test of how it works, you can run it locally. Prerequisites are `doc
 Run the server:
 
 ```bash
-docker run --rm -p 8080:8080 -e FILEWAY_SECRET_HASHES=652c7dc687d98c9889304ed2e408c74b611e86a40caa51c4b43f1dd5913c5cd0 ghcr.io/proofrock/fileway:latest
+docker run --rm -p 8080:8080 -e FILEWAY_SECRET_HASHES='$2a$10$I.NhoT1acD9XkXmXn1IMSOp0qhZDd63iSw1RfHZP7nzyg/ItX5eVa' ghcr.io/proofrock/fileway:latest
 ```
 
 Then open [http://localhost:8080](http://localhost:8080) to access the web page. Put `mysecret` as the secret, and choose a file. Press the Upload button.
@@ -38,7 +38,7 @@ It's a Go application but it's tailor-made to be configured and installed via Do
 
 Get a server, ideally already provisioned with a reverse proxy. `fileway` is best not exposed directly to internet, mainly because it doesn't provide HTTPS.
 
-Generate a secret, best a long (24+) sequence of letters and numbers (to avoid escaping problems), and hash it with SHA256 using for example [this site](https://emn178.github.io/online-tools/sha256.html) that, at time of writing, doesn't seem to send your secret over the intenet (check!).
+Generate a secret, best a long (24+) sequence of letters and numbers (to avoid problems with escapes), and hash it using BCrypt (too see how, read later, 'Hashing the secret').
 
 > 💡 You can generate several hashes, and specify them as a comma-separated list.
 
@@ -63,27 +63,19 @@ services:
 
 #### Docker image with `caddy`
 
-Also published is a docker image `fileway-caddy`, to provide automatic HTTPS via Let'sEncrypt and `caddy`. The usage is very similar, but you must open the ports 80 and 443 (to caddy) and specify the `BASE_ADDRESS` env var to specify the site you're publishing.
+It's strongly advised not to expose the server directly to the internet, for obvious reasons. You can configure a reverse proxy to add HTTPS; in this case read (for example) 'Using `caddy` as an external reverse proxy' later on.
+
+For a simpler installation, a docker image `fileway-caddy` is available, to provide automatic HTTPS via Let's Encrypt and `caddy`. The usage is very similar to the basic image, but you must open the ports 80 and 443 (to caddy) and provide the `BASE_ADDRESS` env var to specify the web address you're publishing.
 
 ```bash
 docker run --name fileway -p 8080:8080 -e BASE_ADDRESS=fileway.example.com -e FILEWAY_SECRET_HASHES=<secret_hash[,<another_one>,...]> ghcr.io/proofrock/fileway-caddy:latest
-```
-
-#### Using `caddy` as an external reverse proxy
-
-This is an excerpt of a `caddyfile`:
-
-```caddyfile
-fileway.example.com {
-  reverse_proxy localhost:8080
-}
 ```
 
 ### Upload client
 
 #### Web upload client (via browser)
 
-A simple web client is provided. Access it by calling the "root" address, e.g. `https://fileway.example.com`.
+A simple web client is provided. Access it by calling the "root" address, e.g. `https://fileway.example.com`. It should work fine on mobile, too.
 
 ![A screenshot of the Web UI](resources/webui.png)
 
@@ -121,3 +113,31 @@ In order to try and mitigate this, the user agent of a download call is searched
 In the root dir of this repository, use `docker buildx build . -f Dockerfile.simple -t fileway:v0.4.1`. This will generate a docker image tagged as `fileway:v0.4.1`.
 
 `docker` and `docker buildx` must be properly installed and available.
+
+## Further topics
+
+### Hashing the secret
+
+To hash a secret using BCrypt, you can:
+
+- Use a website, google for it. Usually these sites send the secret to their servers, so you shouldn't use them for "production" secrets.
+
+- Use `htpasswd` from `apache-utils` (or the relevant package for your distribution). Run the following commandand remove the initial `:` from the result.
+  ```bash
+  htpasswd -nbBC 10 "" mysecret
+  ```
+- Use `docker` and the `caddy` image, with the following commandline.
+  ```bash
+  docker run --rm caddy caddy hash-password -p 'mysecret'
+  ```
+
+### Using `caddy` as an external reverse proxy
+
+This is an excerpt of a `caddyfile`:
+
+```caddyfile
+fileway.example.com {
+  reverse_proxy localhost:8080
+}
+```
+
