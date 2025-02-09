@@ -41,7 +41,8 @@ var uploadPage []byte
 //go:embed webui/download.html
 var downloadPage []byte
 
-const VERSION = "v0.0.0"
+var version string
+var buildTime string
 
 func replace(src []byte, toreplace, replacer string) []byte {
 	ret := string(src)
@@ -51,8 +52,8 @@ func replace(src []byte, toreplace, replacer string) []byte {
 
 func main() {
 	// Replaces version in the web pages
-	downloadPage = replace(downloadPage, "#VERSION#", VERSION)
-	uploadPage = replace(uploadPage, "#VERSION#", VERSION)
+	downloadPage = replace(downloadPage, "#VERSION#", version)
+	uploadPage = replace(uploadPage, "#VERSION#", version)
 
 	// https://manytools.org/hacker-tools/ascii-banner/, profile "Slant"
 	fmt.Println("    _____ __")
@@ -60,8 +61,15 @@ func main() {
 	fmt.Println("  / /_/ / / _ \\ | /| / / __ `/ / / /")
 	fmt.Println(" / __/ / /  __/ |/ |/ / /_/ / /_/ /")
 	fmt.Println("/_/ /_/_/\\___/|__/|__/\\__,_/\\__, /")
-	fmt.Println("                           /____/ " + VERSION)
+	fmt.Println("                           /____/ " + version)
 	fmt.Println()
+
+	if _, isthere := os.LookupEnv("REPRODUCIBLE_BUILD_INFO"); isthere {
+		fmt.Println("Variables used for this build:")
+		fmt.Printf("- VERSION='%s'\n", version)
+		fmt.Printf("- SOURCE_DATE_EPOCH='%s'\n", buildTime)
+		fmt.Println()
+	}
 
 	env := os.Getenv("FILEWAY_SECRET_HASHES")
 	if env == "" {

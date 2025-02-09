@@ -1,9 +1,16 @@
-FROM golang:latest AS build
+# docker build --build-arg VERSION=<version> --build-arg SOURCE_DATE_EPOCH=<epoch> -t myfileway -f Dockerfile.simple .
+
+# golang:1.23.6
+FROM golang@sha256:927112936d6b496ed95f55f362cc09da6e3e624ef868814c56d55bd7323e0959 AS build
 
 WORKDIR /go/src/app
 COPY src/ .
+COPY reproducible_build.sh .
 
-RUN CGO_ENABLED=0  go build -trimpath -a -o fileway -tags="netgo osusergo" -ldflags='-w -extldflags "-static"'
+ARG VERSION=v0.0.0
+ARG SOURCE_DATE_EPOCH=0
+
+RUN bash reproducible_build.sh
 
 # Now copy it into our base image.
 FROM gcr.io/distroless/static-debian12

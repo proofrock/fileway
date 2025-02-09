@@ -17,6 +17,8 @@ Uploads can be done with a web interface - works on mobile, too - or via a pytho
 
 `fileway` doesn't store anything on the server, it just keeps a buffer to make transfers smooth. It doesn't have any dependency other than `go`. It's distributed as a docker image, but you can easily build it yourself. Also provided, a docker image that includes `caddy` for simple HTTPS provisioning.
 
+Builds are reproducible. See 'Reproducing a build' for more info.
+
 ## Quickstart/demo
 
 For a quick test of how it works, you can run it locally. Prerequisites are `docker`, a file to upload, nothing else.
@@ -158,6 +160,45 @@ This is an excerpt of a `caddyfile`:
 fileway.example.com {
   reverse_proxy localhost:8080
 }
+```
+
+### Reproducing a build
+
+`fileway` is somewhat security-sensitive, so being able to reproduce a build is desirable.
+
+In order to ensure that a distributed docker image matches the sources, you can follow these steps. I will use `v0.5.1'` for this example, later versions are ok also.
+
+First of all, in a temp directory, extract the executable file from the official image:
+
+```bash
+mkdir tmp && cd tmp
+docker create --name temp ghcr.io/proofrock/fileway:v0.5.1 # or fileway-caddy
+docker export temp | tar xf - fileway
+docker rm temp
+```
+
+Get the MD5 of the file and the parameters that were used to build it:
+
+```bash
+md5sum fileway
+# 4855b28b1dcd089265b9472a5a020621  fileway
+REPRODUCIBLE_BUILD_INFO=1 ./fileway 
+# ...
+# Variables used for this build:
+# - VERSION='v0.5.1'
+# - SOURCE_DATE_EPOCH='47836427937'
+```
+
+Finally, download the correct version of the official repository, generate a binary with the appropriate dockerfile, using the values from the last output as the env vars values.
+
+Finally, confront the MD5 of the generated file.
+
+```bash
+git clone -b "v0.5.1" https://github.com/proofrock/fileway fwrepo
+cd fwrepo
+docker build --build-arg VERSION='v0.5.1' --build-arg SOURCE_DATE_EPOCH='47836427937' --output=. -f Dockerfile.binary .
+md5sum fileway
+# 4855b28b1dcd089265b9472a5a020621  fileway
 ```
 
 ---

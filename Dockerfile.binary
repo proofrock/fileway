@@ -1,3 +1,5 @@
+# docker build --build-arg VERSION=<version> --build-arg SOURCE_DATE_EPOCH=<epoch> --output=. -f Dockerfile.binary .
+
 # golang:1.23.6
 FROM golang@sha256:927112936d6b496ed95f55f362cc09da6e3e624ef868814c56d55bd7323e0959 AS build
 
@@ -10,14 +12,6 @@ ARG SOURCE_DATE_EPOCH=0
 
 RUN bash reproducible_build.sh
 
-# Now copy it into a caddy image.
-FROM caddy:latest
+FROM scratch AS export
 
 COPY --from=build /go/src/app/fileway /
-
-ENV FILEWAY_SECRET_HASHES=""
-ENV BASE_ADDRESS=""
-
-EXPOSE 80 443
-
-CMD ["/bin/sh", "-c", "/fileway & caddy reverse-proxy --from $BASE_ADDRESS --to http://localhost:8080"]
