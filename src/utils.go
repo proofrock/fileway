@@ -16,6 +16,8 @@ package main
 import (
 	"crypto/rand"
 	"math/big"
+	"os"
+	"strconv"
 )
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -27,4 +29,14 @@ func genRandomString(length int) string {
 		result[i] = alphabet[n.Int64()]
 	}
 	return string(result)
+}
+
+func GetIntEnv(name string, deflt int) int {
+	if val, isthere := os.LookupEnv(name); !isthere {
+		return deflt
+	} else if ret, err := strconv.Atoi(val); err != nil {
+		return deflt
+	} else {
+		return ret
+	}
 }

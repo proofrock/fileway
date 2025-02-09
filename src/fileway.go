@@ -20,11 +20,6 @@ import (
 	"time"
 )
 
-const (
-	IdsLength = 33      // Length of ID random strings, amounts to 192 bit
-	ChunkSize = 4194304 // 4Mb
-)
-
 type Conduit struct {
 	secret          string
 	Id              string
@@ -38,11 +33,11 @@ type Conduit struct {
 
 func NewConduit(filename string, size int64, secret string) *Conduit {
 	ret := &Conduit{
-		Id:         genRandomString(IdsLength),
+		Id:         genRandomString(idsLength),
 		Filename:   filename,
 		Size:       size,
 		secret:     secret,
-		ChunkQueue: make(chan []byte, 1),
+		ChunkQueue: make(chan []byte, bufferQueueSize),
 		mu:         sync.Mutex{},
 	}
 	ret.touch()

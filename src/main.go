@@ -33,7 +33,14 @@ var (
 	secretHashes = make([][]byte, 0)
 	conduitsMu   sync.RWMutex
 	passwords    sync.Map
+
+	idsLength       = GetIntEnv("RANDOM_IDS_LENGTH", 33) // Length of ID random strings, amounts to 192 bit
+	chunkSize       = GetIntEnv("CHUNK_SIZE_KB", 4096)   // 4Mb
+	bufferQueueSize = GetIntEnv("BUFFER_QUEUE_SIZE", 4)  // 16Mb total
 )
+
+// cleanup unused/stale sessions, not accessed for > 4 minutes
+const expiryMillis = 4 * 60 * 1000
 
 //go:embed webui/upload.html
 var uploadPage []byte
@@ -41,8 +48,8 @@ var uploadPage []byte
 //go:embed webui/download.html
 var downloadPage []byte
 
-var version string
-var buildTime string
+var version string   // Set at build time, var VERSION
+var buildTime string // Set at build time, var SOURCE_DATE_EPOCH
 
 func replace(src []byte, toreplace, replacer string) []byte {
 	ret := string(src)
@@ -66,9 +73,10 @@ func main() {
 
 	if _, isthere := os.LookupEnv("REPRODUCIBLE_BUILD_INFO"); isthere {
 		fmt.Println("Variables used for this build:")
-		fmt.Printf("- VERSION='%s'\n", version)
-		fmt.Printf("- SOURCE_DATE_EPOCH='%s'\n", buildTime)
+		fmt.Printf("- VERSION: '%s'\n", version)
+		fmt.Printf("- SOURCE_DATE_EPOCH: '%s'\n", buildTime)
 		fmt.Println()
+		return
 	}
 
 	env := os.Getenv("FILEWAY_SECRET_HASHES")
@@ -78,6 +86,12 @@ func main() {
 	for _, s := range strings.Split(env, ",") {
 		secretHashes = append(secretHashes, []byte(s))
 	}
+
+	fmt.Println("Parameters:")
+	fmt.Printf("- Chunk size (Kb): %d\n", chunkSize)
+	fmt.Printf("- Internal chunk queue size: %d Kb\n", bufferQueueSize)
+	fmt.Printf("- Random IDs length: %d\n", idsLength)
+	fmt.Println()
 
 	// Setup periodic cleanup
 	go func() {
@@ -106,12 +120,15 @@ func cleanupStaleConduits() {
 	conduitsMu.Lock()
 	defer conduitsMu.Unlock()
 
-	cutoffTime := time.Now().Add(-15 * time.Minute).UnixMilli()
+	cutoffTime := time.Now().UnixMilli() - expiryMillis
+	i := 0
 	for id, conduit := range conduits {
 		if conduit.WasAccessedBefore(cutoffTime) {
+			i++
 			delete(conduits, id)
 		}
 	}
+	fmt.Printf("%d sessions were garbage collected\n", i)
 }
 
 func getConduit(r *string) *Conduit {
@@ -233,7 +250,7 @@ func ping(w http.ResponseWriter, r *http.Request) {
 
 	ret := ""
 	if conduit.IsDownloading() {
-		ret = strconv.Itoa(ChunkSize)
+		ret = strconv.Itoa(chunkSize)
 	}
 	_, _ = w.Write([]byte(ret))
 }

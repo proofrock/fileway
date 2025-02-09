@@ -70,6 +70,16 @@ services:
       - 8080:8080
 ```
 
+The following are the environment variables that you can set:
+
+env var | default value | description
+---|---|---
+`FILEWAY_SECRET_HASHES` | *Mandatory* | Comma-separated list of BCrypt hashes for the secrets.
+`CHUNK_SIZE_KB` | 4096 | Chunk size for upload and internal buffer.
+`BUFFER_QUEUE_SIZE` | 4 | Internal buffer queue of chunks.
+`RANDOM_IDS_LENGTH` | 33 | Length of the random strings, e.g. in download links. 11 ~= 64bit.
+`REPRODUCIBLE_BUILD_INFO` | *not set* | If set, prints info for reproducing a build (see below) and exits.
+
 > 💡 If a docker network is needed, you can set `internal: true` on it so that no outbound access is possible. `fileway` doesn't need to access any other system.
 
 #### Docker image with `caddy`
@@ -117,12 +127,6 @@ After a client initiates a download and the `fileway_ul.py` sends all the data, 
 
 The link provided by the uploads clients will open a download page when opened in a browser, and will download the file when opened with a CLI application. To better understand how this is done, and troubleshoot, please read the 'Understanding the download URL' section.
 
-## Building the server
-
-In the root dir of this repository, use `docker buildx build . -f Dockerfile.simple -t fileway:v0.5.0`. This will generate a docker image tagged as `fileway:v0.5.0`.
-
-`docker` and `docker buildx` must be properly installed and available.
-
 ## Further topics
 
 ### Hashing the secret
@@ -161,6 +165,16 @@ fileway.example.com {
   reverse_proxy localhost:8080
 }
 ```
+
+### Building the server
+
+In the root dir of this repository, use 
+
+```bash
+docker buildx build --build-arg VERSION=<version> --build-arg SOURCE_DATE_EPOCH=<epoch> . -f Dockerfile.simple -t fileway:<version>
+```
+
+This will generate a docker image tagged as `fileway:<version>`. `docker` and `docker buildx` must be properly installed and available.
 
 ### Reproducing a build
 
