@@ -1,5 +1,15 @@
 # Release procedure
 
+## Update libraries
+
+```bash
+cd src
+go get -u
+go mod tidy
+```
+
+Check latest version of Go, and in case it change update `go.mod`.
+
 ## Builder image
 
 Get the docker image hash that will build the binary:

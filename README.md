@@ -1,4 +1,4 @@
-# 🚠 fileway v0.5.0
+# 🚠 fileway v0.5.1
 
 ## tl;dr
 
@@ -115,7 +115,7 @@ python3 fileway_ul.py myfile.bin
 This will output a link with the instructions to download. The link is unique and, while public, it's quite difficult to guess.
 
 ```text
-== fileway v0.5.0 ==
+== fileway v0.5.1 ==
 All set up! Download your file using:
 - a browser, from https://fileway.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
 - a shell, with $> curl -OJ https://fileway.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
