@@ -32,7 +32,7 @@ func genRandomString(length int) string {
 }
 
 func GetIntEnv(name string, deflt int) int {
-	if val, isthere := os.LookupEnv(name); !isthere {
+	if val, isthere := os.LookupEnv(name); !isthere || val == "" {
 		return deflt
 	} else if ret, err := strconv.Atoi(val); err != nil {
 		return deflt
