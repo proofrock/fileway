@@ -34,9 +34,9 @@ var (
 	conduitsMu   sync.RWMutex
 	passwords    sync.Map
 
-	idsLength       = GetIntEnv("RANDOM_IDS_LENGTH", 33) // Length of ID random strings, amounts to 192 bit
-	chunkSize       = GetIntEnv("CHUNK_SIZE_KB", 4096)   // 4Mb
-	bufferQueueSize = GetIntEnv("BUFFER_QUEUE_SIZE", 4)  // 16Mb total
+	idsLength       = GetIntEnv("RANDOM_IDS_LENGTH", 33)      // Length of ID random strings, amounts to 192 bit
+	chunkSize       = GetIntEnv("CHUNK_SIZE_KB", 4096) * 1024 // 4Mb
+	bufferQueueSize = GetIntEnv("BUFFER_QUEUE_SIZE", 4)       // 16Mb total
 )
 
 // cleanup unused/stale sessions, not accessed for > 4 minutes
@@ -129,7 +129,7 @@ func cleanupStaleConduits() {
 		}
 	}
 	if i > 0 {
-	fmt.Printf("%d sessions were garbage collected\n", i)
+		fmt.Printf("%d sessions were garbage collected\n", i)
 	}
 }
 
