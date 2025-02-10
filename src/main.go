@@ -128,7 +128,9 @@ func cleanupStaleConduits() {
 			delete(conduits, id)
 		}
 	}
+	if i > 0 {
 	fmt.Printf("%d sessions were garbage collected\n", i)
+	}
 }
 
 func getConduit(r *string) *Conduit {
