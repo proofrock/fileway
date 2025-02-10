@@ -1,4 +1,4 @@
-# 🚠 fileway v0.5.1
+# 🚠 fileway v0.5.2
 
 ## tl;dr
 
@@ -115,7 +115,7 @@ python3 fileway_ul.py myfile.bin
 This will output a link with the instructions to download. The link is unique and, while public, it's quite difficult to guess.
 
 ```text
-== fileway v0.5.1 ==
+== fileway v0.5.2 ==
 All set up! Download your file using:
 - a browser, from https://fileway.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
 - a shell, with $> curl -OJ https://fileway.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
@@ -136,17 +136,20 @@ To hash a secret using BCrypt, you can:
 - Use a website, google for it. Usually these sites send the secret to their servers, so you shouldn't use them for "production" secrets.
 
 - Use `htpasswd` from `apache-utils` (or the relevant package for your distribution). Run the following commandand remove the initial `:` from the result.
+
   ```bash
   htpasswd -nbBC 10 "" mysecret
   ```
+
 - Use `docker` and the `caddy` image, with the following commandline.
+
   ```bash
   docker run --rm caddy caddy hash-password -p 'mysecret'
   ```
 
 ### Understanding the download URL
 
-Many apps that you may use to send the download URL to someone - Whatsapp, Slack, etc. - display a preview of any link you're pasting. So, if the link was one-time, it would be "used" and made invalid. 
+Many apps that you may use to send the download URL to someone - Whatsapp, Slack, etc. - display a preview of any link you're pasting. So, if the link was one-time, it would be "used" and made invalid.
 
 The download link points to an intermediate web page, with a download button. This way, an app would see that page, not the download link.
 
@@ -168,7 +171,7 @@ fileway.example.com {
 
 ### Building the server
 
-In the root dir of this repository, use 
+In the root dir of this repository, use
 
 ```bash
 docker buildx build --build-arg VERSION=<version> --build-arg SOURCE_DATE_EPOCH=<epoch> . -f Dockerfile.simple -t fileway:<version>
@@ -180,13 +183,13 @@ This will generate a docker image tagged as `fileway:<version>`. `docker` and `d
 
 `fileway` is somewhat security-sensitive, so being able to reproduce a build is desirable.
 
-In order to ensure that a distributed docker image matches the sources, you can follow these steps. I will use `v0.5.1'` for this example, later versions are ok also.
+In order to ensure that a distributed docker image matches the sources, you can follow these steps. I will use `v0.5.2'` for this example, later versions are ok also.
 
 First of all, in a temp directory, extract the executable file from the official image:
 
 ```bash
 mkdir tmp && cd tmp
-docker create --name temp ghcr.io/proofrock/fileway:v0.5.1 # or fileway-caddy
+docker create --name temp ghcr.io/proofrock/fileway:v0.5.2 # or fileway-caddy
 docker export temp | tar xf - fileway
 docker rm temp
 ```
@@ -199,7 +202,7 @@ md5sum fileway
 REPRODUCIBLE_BUILD_INFO=1 ./fileway 
 # ...
 # Variables used for this build:
-# - VERSION='v0.5.1'
+# - VERSION='v0.5.2'
 # - SOURCE_DATE_EPOCH='47836427937'
 ```
 
@@ -208,9 +211,9 @@ Finally, download the correct version of the official repository, generate a bin
 Finally, confront the MD5 of the generated file.
 
 ```bash
-git clone -b "v0.5.1" https://github.com/proofrock/fileway fwrepo
+git clone -b "v0.5.2" https://github.com/proofrock/fileway fwrepo
 cd fwrepo
-docker build --build-arg VERSION='v0.5.1' --build-arg SOURCE_DATE_EPOCH='47836427937' --output=. -f Dockerfile.binary .
+docker build --build-arg VERSION='v0.5.2' --build-arg SOURCE_DATE_EPOCH='47836427937' --output=. -f Dockerfile.binary .
 md5sum fileway
 # 4855b28b1dcd089265b9472a5a020621  fileway
 ```
