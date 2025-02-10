@@ -74,7 +74,7 @@ def upload_file(filepath):
                     lap = 1
                     print("", end="\r")
                     while True:
-                        print(f"Uploading chunk {lap}/{laps}...", end="\r")
+                        print(f"Uploading chunk {lap}/{laps}: {round(lap*100/laps, 1)}%", end="\r")
                         lap += 1
 
                         chunk = file.read(chunk_size)
@@ -94,7 +94,7 @@ def upload_file(filepath):
                                 print("Error in uploading: " + ul_response.read().decode('utf-8'))
                                 return
 
-                print("All data sent. Bye!             ")
+                print("All data sent. Bye!                     ")
 
         except urllib.error.URLError as e:
             print(f"URL Error: {e}")

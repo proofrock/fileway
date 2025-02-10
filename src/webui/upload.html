@@ -114,7 +114,8 @@
                 let lap = 1;
                 const laps = Math.ceil(file.size / chunkSize);
                 while (offset < file.size) {
-                    status.textContent = `Uploading chunk ${lap++}/${laps}...`;
+                    status.textContent = `Uploading chunk ${lap}/${laps}: ${Math.round(lap * 100 / laps)}%`;
+                    lap++;
                     status2.textContent = `Leave this page open.`;
                     const chunk = file.slice(offset, offset + chunkSize);
                     const uploadResponse = await fetch(`${baseUrl}/ul/${conduitId}`, {
