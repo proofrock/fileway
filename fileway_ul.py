@@ -26,6 +26,10 @@ SECRET = "mysecret" # Hashes to $2a$10$I.NhoT1acD9XkXmXn1IMSOp0qhZDd63iSw1RfHZP7
 # Base URL for all HTTP requests
 BASE_URL = "http://localhost:8080"
 
+# Secret for uploading
+# If this row is commented out, it will ask for it at runtime
+SECRET = "mysecret" # Hashes to $2a$10$I.NhoT1acD9XkXmXn1IMSOp0qhZDd63iSw1RfHZP7nzyg/ItX5eVa
+
  ############################
 ### Don't modify from here ###
  ############################
@@ -112,6 +116,14 @@ if __name__ == "__main__":
         print("Usage: python3 fileway_ul.py <file_path>")
         sys.exit(1)
     
+    try:
+        SECRET
+    except NameError:
+        print()
+        from getpass import getpass
+        SECRET = getpass('Please enter secret: ')
+        print()
+    print(SECRET)
     # Check if file exists
     if not os.path.exists(sys.argv[1]):
         print(f"Error: File '{sys.argv[1]}' does not exist.")
