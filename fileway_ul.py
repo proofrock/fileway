@@ -119,7 +119,7 @@ if __name__ == "__main__":
         from getpass import getpass
         SECRET = getpass('Please enter secret: ')
         print()
-    print(SECRET)
+
     # Check if file exists
     if not os.path.exists(sys.argv[1]):
         print(f"Error: File '{sys.argv[1]}' does not exist.")
