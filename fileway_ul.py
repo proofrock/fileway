@@ -18,6 +18,7 @@ import math
 import time
 import urllib.request
 import urllib.error
+import json
 
 # Secret for uploading
 SECRET = "mysecret" # Hashes to $2a$10$I.NhoT1acD9XkXmXn1IMSOp0qhZDd63iSw1RfHZP7nzyg/ItX5eVa
@@ -55,27 +56,27 @@ def upload_file(filepath):
                 print(f"- a shell, with $> curl -OJ {BASE_URL}/dl/{conduitId}")
 
                 # Poll to check server availability and get chunk size
-                chunk_size = 0
+                chunk_plan = []
                 while True:
                     ping_url = f"{BASE_URL}/ping/{conduitId}"
                     ping_req = urllib.request.Request(ping_url)
                     ping_req.add_header("x-fileway-secret", SECRET)
                     
                     with urllib.request.urlopen(ping_req, timeout=30) as ping_response:
-                        ping_text = ping_response.read().decode('utf-8')
+                        ping_text = ping_response.read()
                         if ping_text:
-                            chunk_size = int(ping_text)
-                            break
+                            chunk_plan = json.loads(ping_text)
+                            if len(chunk_plan) > 0:
+                                break
+
                     time.sleep(1)
 
                 # Open file and upload chunks
                 with open(filepath, 'rb') as file:
-                    laps = math.ceil(filesize/chunk_size)
-                    lap = 1
                     print("", end="\r")
-                    while True:
-                        print(f"Uploading chunk {lap}/{laps}: {round(lap*100/laps, 1)}%", end="\r")
-                        lap += 1
+                    for lap, chunk_size in enumerate(chunk_plan):
+                        perc = round(lap*100/len(chunk_plan), 1)
+                        print(f"Uploading chunk {lap+1}/{len(chunk_plan)}: {perc}%", end="\r")
 
                         chunk = file.read(chunk_size)
                         if len(chunk) == 0:

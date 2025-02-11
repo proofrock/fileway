@@ -15,6 +15,7 @@ package main
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -39,8 +40,11 @@ var (
 	bufferQueueSize = GetIntEnv("BUFFER_QUEUE_SIZE", 4)       // 16Mb total
 )
 
-// cleanup unused/stale sessions, not accessed for > 4 minutes
-const expiryMillis = 4 * 60 * 1000
+const (
+	chunkSizeInitial    = 4096          // initially 4k
+	chunkSizeRampFactor = 2             // x2 every chunk, until it reaches chunkSize
+	expiryMillis        = 4 * 60 * 1000 // cleanup unused/stale sessions, not accessed for > 4 minutes
+)
 
 //go:embed webui/upload.html
 var uploadPage []byte
@@ -227,7 +231,12 @@ func setup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	size, _ := strconv.ParseInt(sizeStr, 10, 64)
+	size, err := strconv.ParseInt(sizeStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Non-numeric size", http.StatusBadRequest)
+		return
+	}
+
 	conduit := NewConduit(filename, size, passedSecret)
 
 	conduitsMu.Lock()
@@ -250,11 +259,20 @@ func ping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ret := ""
+	var ret []byte
 	if conduit.IsDownloading() {
-		ret = strconv.Itoa(chunkSize)
+		if _ret, err := json.Marshal(conduit.ChunkPlan); err != nil {
+			http.Error(w, "Marshaling issue", http.StatusInternalServerError)
+			return
+		} else {
+			ret = _ret
+		}
+	} else {
+		ret = []byte("[]")
 	}
-	_, _ = w.Write([]byte(ret))
+
+	w.Header().Add("Content-Type", "application/json")
+	_, _ = w.Write(ret)
 }
 
 func ul(w http.ResponseWriter, r *http.Request) {
@@ -280,4 +298,7 @@ func ul(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusRequestTimeout)
 		return
 	}
+
+	nextSize := min(len(content)*chunkSizeRampFactor, chunkSize)
+	_, _ = w.Write([]byte(strconv.Itoa(nextSize)))
 }

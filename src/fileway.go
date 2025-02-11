@@ -21,11 +21,14 @@ import (
 )
 
 type Conduit struct {
-	secret          string
-	Id              string
-	Filename        string
-	Size            int64
-	ChunkQueue      chan []byte
+	secret    string
+	Id        string
+	Filename  string
+	Size      int64
+	ChunkPlan []int
+
+	ChunkQueue chan []byte
+
 	lastAccessed    atomic.Int64
 	downloadStarted atomic.Bool
 	mu              sync.Mutex
@@ -40,8 +43,30 @@ func NewConduit(filename string, size int64, secret string) *Conduit {
 		ChunkQueue: make(chan []byte, bufferQueueSize),
 		mu:         sync.Mutex{},
 	}
+
+	ret.ChunkPlan = buildChunkPlan(size)
+
 	ret.touch()
 	return ret
+}
+
+func buildChunkPlan(size int64) []int {
+	if size < chunkSizeInitial {
+		return []int{int(size)}
+	}
+
+	sum := int64(chunkSizeInitial)
+	lastChunk := chunkSizeInitial
+	ret := []int{chunkSizeInitial}
+	for {
+		nextChunk := min(lastChunk*chunkSizeRampFactor, chunkSize, int(size-sum))
+		ret = append(ret, nextChunk)
+		sum += int64(nextChunk)
+		if sum == size {
+			return ret
+		}
+		lastChunk = nextChunk
+	}
 }
 
 func (c *Conduit) IsUploadSecretWrong(candidate string) bool {
