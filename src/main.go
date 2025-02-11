@@ -52,6 +52,9 @@ var uploadPage []byte
 //go:embed webui/download.html
 var downloadPage []byte
 
+//go:embed webui/favicon.png
+var favicon []byte
+
 var version string   // Set at build time, var VERSION
 var buildTime string // Set at build time, var SOURCE_DATE_EPOCH
 
@@ -111,13 +114,18 @@ func main() {
 	http.HandleFunc("/setup", setup)
 	http.HandleFunc("/ping/", ping)
 	http.HandleFunc("/ul/", ul)
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		w.Write(uploadPage)
-	})
+	http.HandleFunc("/favicon.png", serveFile(favicon, "image/png"))
+	http.HandleFunc("/", serveFile(uploadPage, "text/html"))
 
 	log.Println("Starting server on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func serveFile(file []byte, mime string) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", mime)
+		w.Write(file)
+	}
 }
 
 func cleanupStaleConduits() {
@@ -170,8 +178,7 @@ func dl(w http.ResponseWriter, r *http.Request) {
 	case "curl", "Wget", "HTTPie", "aria2", "Axel":
 		ddl(w, r)
 	default:
-		w.Header().Set("Content-Type", "text/html")
-		w.Write(downloadPage)
+		serveFile(downloadPage, "text/html")(w, r)
 	}
 }
 
