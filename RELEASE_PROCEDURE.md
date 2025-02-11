@@ -39,10 +39,10 @@ Commit the version, tag it and push everything:
 
 ```bash
 git add .
-git commit -S -m "v0.5.2" # Provide GPG password
+git commit -S -m "v0.6.0" # Provide GPG password
 git push
-git tag -s "v0.5.2" -m "v0.5.2"
-git push origin "v0.5.2"
+git tag -s "v0.6.0" -m "v0.6.0"
+git push origin "v0.6.0"
 ```
 
 The CI pipeline should start.

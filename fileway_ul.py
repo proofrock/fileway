@@ -14,14 +14,10 @@
 #  limitations under the License.
  
 import os
-import math
 import time
 import urllib.request
 import urllib.error
 import json
-
-# Secret for uploading
-SECRET = "mysecret" # Hashes to $2a$10$I.NhoT1acD9XkXmXn1IMSOp0qhZDd63iSw1RfHZP7nzyg/ItX5eVa
 
 # Base URL for all HTTP requests
 BASE_URL = "http://localhost:8080"
@@ -110,7 +106,7 @@ def upload_file(filepath):
 if __name__ == "__main__":
     import sys
 
-    print("== fileway v0.5.2 ==")
+    print("== fileway v0.6.0 ==")
     
     if len(sys.argv) < 2:
         print("Usage: python3 fileway_ul.py <file_path>")

@@ -1,4 +1,4 @@
-# 🚠 fileway v0.5.2
+# 🚠 fileway v0.6.0
 
 ## tl;dr
 
@@ -115,7 +115,7 @@ python3 fileway_ul.py myfile.bin
 This will output a link with the instructions to download. The link is unique and, while public, it's quite difficult to guess.
 
 ```text
-== fileway v0.5.2 ==
+== fileway v0.6.0 ==
 All set up! Download your file using:
 - a browser, from https://fileway.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
 - a shell, with $> curl -OJ https://fileway.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
@@ -183,13 +183,13 @@ This will generate a docker image tagged as `fileway:<version>`. `docker` and `d
 
 `fileway` is somewhat security-sensitive, so being able to reproduce a build is desirable.
 
-In order to ensure that a distributed docker image matches the sources, you can follow these steps. I will use `v0.5.2'` for this example, later versions are ok also.
+In order to ensure that a distributed docker image matches the sources, you can follow these steps. I will use `v0.6.0'` for this example, later versions are ok also.
 
 First of all, in a temp directory, extract the executable file from the official image:
 
 ```bash
 mkdir tmp && cd tmp
-docker create --name temp ghcr.io/proofrock/fileway:v0.5.2 # or fileway-caddy
+docker create --name temp ghcr.io/proofrock/fileway:v0.6.0 # or fileway-caddy
 docker export temp | tar xf - fileway
 docker rm temp
 ```
@@ -202,7 +202,7 @@ md5sum fileway
 REPRODUCIBLE_BUILD_INFO=1 ./fileway 
 # ...
 # Variables used for this build:
-# - VERSION='v0.5.2'
+# - VERSION='v0.6.0'
 # - SOURCE_DATE_EPOCH='47836427937'
 ```
 
@@ -211,9 +211,9 @@ Finally, download the correct version of the official repository, generate a bin
 Finally, confront the MD5 of the generated file.
 
 ```bash
-git clone -b "v0.5.2" https://github.com/proofrock/fileway fwrepo
+git clone -b "v0.6.0" https://github.com/proofrock/fileway fwrepo
 cd fwrepo
-docker build --build-arg VERSION='v0.5.2' --build-arg SOURCE_DATE_EPOCH='47836427937' --output=. -f Dockerfile.binary .
+docker build --build-arg VERSION='v0.6.0' --build-arg SOURCE_DATE_EPOCH='47836427937' --output=. -f Dockerfile.binary .
 md5sum fileway
 # 4855b28b1dcd089265b9472a5a020621  fileway
 ```
