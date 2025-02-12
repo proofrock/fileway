@@ -15,9 +15,11 @@ package main
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math/big"
 	"os"
 	"strconv"
+	"strings"
 )
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -39,4 +41,25 @@ func getIntEnv(name string, deflt int) int {
 	} else {
 		return ret
 	}
+}
+
+func replace(src []byte, toreplace, replacer string) []byte {
+	ret := string(src)
+	ret = strings.ReplaceAll(ret, toreplace, replacer)
+	return []byte(ret)
+}
+
+func humanReadableSize(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGT"[exp])
 }

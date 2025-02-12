@@ -58,12 +58,6 @@ var favicon []byte
 var version string   // Set at build time, var VERSION
 var buildTime string // Set at build time, var SOURCE_DATE_EPOCH
 
-func replace(src []byte, toreplace, replacer string) []byte {
-	ret := string(src)
-	ret = strings.ReplaceAll(ret, toreplace, replacer)
-	return []byte(ret)
-}
-
 func main() {
 	// Replaces version in the web pages
 	downloadPage = replace(downloadPage, "#VERSION#", version)
@@ -178,7 +172,15 @@ func dl(w http.ResponseWriter, r *http.Request) {
 	case "curl", "Wget", "HTTPie", "aria2", "Axel":
 		ddl(w, r)
 	default:
-		serveFile(downloadPage, "text/html")(w, r)
+		conduit := getConduit(&r.URL.Path)
+		if conduit == nil {
+			http.Error(w, "Conduit Not Found", http.StatusNotFound)
+			return
+		}
+
+		fileString := fmt.Sprintf("%s (%s)", conduit.Filename, humanReadableSize(conduit.Size))
+		dlPage := replace(downloadPage, "#FILE_INFO#", fileString)
+		serveFile(dlPage, "text/html")(w, r)
 	}
 }
 

@@ -10,7 +10,7 @@ Fileway is a real-time file transfer service that works through a web browser or
 
 == Overview
 
-`fileway` is a client/server application that accepts an upload of a single file; it blocks the upload until a download is initiated, then processes the upload and sends the data to the downloading client. It can be used to transfer files from a server to another, if the two servers don't easily "see" each other, by being installed to a third server (on the internet) that they both see.
+`fileway` is a client/server application that single files (<<ZIP,well, technically...>>); it blocks the upload until a download is initiated, then processes the upload and sends the data to the downloading client. It can be used to transfer files from a server to another, if the two servers don't easily "see" each other, by being installed to a third server (on the internet) that they both see.
 
 .Sequence diagram
 image::resources/seq_diagram.png[Sequence diagram]
@@ -128,7 +128,7 @@ image::resources/webui.png[A screenshot of the Web UI]
 
 Download the file `fileway_ul.py` from this repository. The script doesn't have any dependency other than python3.
 
-Configure it with the secret and the base URL that you exposed to internet (in the `caddy` example above, `https://fileway.example.com`).
+Edit it and configure the secret and the base URL that you exposed to internet (in the `caddy` example above, `https://fileway.example.com`).
 
 Then just launch it:
 
@@ -147,6 +147,16 @@ All set up! Download your file using:
 ----
 
 After a client initiates a download and the `fileway_ul.py` sends all the data, the `fileway_ul.py` script will exit.
+
+[TIP]
+====
+[[ZIP]] You can use `--zip` as a commandline switch and specify multiple files and directories; the client will compress them to a temp file and send the result.
+====
+
+[TIP]
+====
+If you comment out the `SECRET` variable, the script will ask for the secret at every use.
+====
 
 === Download link
 

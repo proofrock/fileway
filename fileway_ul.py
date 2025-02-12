@@ -18,6 +18,11 @@ import time
 import urllib.request
 import urllib.error
 import json
+import zipfile
+import tempfile
+import random
+import string
+import atexit
 
 # Base URL for all HTTP requests
 BASE_URL = "http://localhost:8080"
@@ -102,15 +107,48 @@ def upload_file(filepath):
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+def create_temp_zip(paths_list):
+    try:
+        random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=4))
+        zip_filename = f"fileway_{random_string}.zip"
+        
+        temp_dir = tempfile.gettempdir()
+        zip_path = os.path.join(temp_dir, zip_filename)
+        
+        atexit.register(lambda: os.remove(zip_path) if os.path.exists(zip_path) else None)
+        
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for path in paths_list:
+                if os.path.exists(path):
+                    if os.path.isfile(path):
+                        zipf.write(path, os.path.basename(path))
+                    elif os.path.isdir(path):
+                        for root, _, files in os.walk(path):
+                            for file in files:
+                                file_path = os.path.join(root, file)
+                                arcname = os.path.relpath(file_path, os.path.dirname(path))
+                                zipf.write(file_path, arcname)
+                else:
+                    print(f"Error: Path not found: {path}")
+                    return None
+        
+        return zip_path
+    
+    except Exception as e:
+        print(f"Error creating ZIP file: {str(e)}")
+        return None
+
+def abort_usage():
+    print("Usage: python3 fileway_ul.py [--zip] <file_path1> [<file_path_2>] [...]")
+    print(" (if --zip is specified, more than one file or dir can be provided)")
+    sys.exit(1)
+
 # Example usage
 if __name__ == "__main__":
     import sys
 
     print("== fileway v0.6.0 ==")
-    
-    if len(sys.argv) < 2:
-        print("Usage: python3 fileway_ul.py <file_path>")
-        sys.exit(1)
+    print()
     
     try:
         SECRET
@@ -119,21 +157,40 @@ if __name__ == "__main__":
         from getpass import getpass
         SECRET = getpass('Please enter secret: ')
         print()
-
+    
+    is_zip = False
+    try:
+        is_zip = sys.argv[1] == '--zip'
+    except IndexError:
+        abort_usage()
+    
+    file = ""
+    if is_zip:
+        if len(sys.argv) < 3:
+            abort_usage()
+        print("Zipping files...")
+        file = create_temp_zip(sys.argv[2:])
+        if file == None:
+            sys.exit(1)
+        print(f"Created upload file '{file}'")
+    else:
+        if len(sys.argv) != 2:
+            abort_usage()
+        file = sys.argv[1]
+    
     # Check if file exists
-    if not os.path.exists(sys.argv[1]):
-        print(f"Error: File '{sys.argv[1]}' does not exist.")
+    if not os.path.exists(file):
+        print(f"Error: File '{file}' does not exist.")
         sys.exit(1)
     
     # Check if it's a file (not a directory)
-    if not os.path.isfile(sys.argv[1]):
-        print(f"Error: '{sys.argv[1]}' is not a file.")
+    if not os.path.isfile(file):
+        print(f"Error: '{file}' is not a file.")
         sys.exit(1)
 
     # Check file readability
-    if not os.access(sys.argv[1], os.R_OK):
-        print(f"Error: Unable to read file '{sys.argv[1]}'. Check file permissions.")
+    if not os.access(file, os.R_OK):
+        print(f"Error: Unable to read file '{file}'. Check file permissions.")
         sys.exit(1)
 
-    filepath = sys.argv[1]
-    upload_file(filepath)
+    upload_file(file)
