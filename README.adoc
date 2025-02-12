@@ -160,7 +160,9 @@ If you comment out the `SECRET` variable, the script will ask for the secret at 
 
 === Download link
 
-The link provided by the uploads clients will open a download page when opened in a browser, and will download the file when opened with a CLI application. To better understand how this is done, and troubleshoot, please read the 'Understanding the download URL' section.
+The link provided by the uploads clients will open a download page when opened in a browser, and will directly download the file when opened with a CLI application.
+
+For more details, please <<UDU,read the relevant section>>.
 
 == Further topics
 
@@ -179,7 +181,7 @@ To hash a secret using BCrypt, you can:
   docker run --rm caddy caddy hash-password -p 'mysecret'
 
 
-=== Understanding the download URL
+=== Understanding the download URL [[UDU]]
 
 Many apps that you may use to send the download URL to someone - Whatsapp, Slack, etc. - display a preview of any link you're pasting. So, if the link was one-time, it would be "used" and made invalid.
 
