@@ -13,17 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
  
-import os
-import time
-import urllib.request
-import urllib.error
-import json
-import zipfile
-import tempfile
-import random
-import string
-import atexit
-
 # Base URL for all HTTP requests
 BASE_URL = "http://localhost:8080"
 
@@ -34,6 +23,17 @@ SECRET = "mysecret" # Hashes to $2a$10$I.NhoT1acD9XkXmXn1IMSOp0qhZDd63iSw1RfHZP7
  ############################
 ### Don't modify from here ###
  ############################
+
+import os
+import time
+import urllib.request
+import urllib.error
+import json
+import zipfile
+import tempfile
+import random
+import string
+import atexit
 
 def upload_file(filepath):
     # Extract filename from path
