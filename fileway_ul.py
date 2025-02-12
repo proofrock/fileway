@@ -147,7 +147,7 @@ def abort_usage():
 if __name__ == "__main__":
     import sys
 
-    print("== fileway v0.6.0 ==")
+    print("== fileway v0.6.1 ==")
     print()
     
     try:

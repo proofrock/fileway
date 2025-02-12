@@ -28,7 +28,7 @@ FROM golang@<SHA256> AS build
 
 ## Version
 
-Replace the new version string (e.g. `v0.4.1`) in:
+Replace the new version string (e.g. `v0.6.2`) in:
 
 - `README.md`
 - `fileway_ul.py`
@@ -39,10 +39,10 @@ Commit the version, tag it and push everything:
 
 ```bash
 git add .
-git commit -S -m "v0.6.0" # Provide GPG password
+git commit -S -m "v0.6.1" # Provide GPG password
 git push
-git tag -s "v0.6.0" -m "v0.6.0"
-git push origin "v0.6.0"
+git tag -s "v0.6.1" -m "v0.6.1"
+git push origin "v0.6.1"
 ```
 
 The CI pipeline should start.
