@@ -31,7 +31,7 @@ func genRandomString(length int) string {
 	return string(result)
 }
 
-func GetIntEnv(name string, deflt int) int {
+func getIntEnv(name string, deflt int) int {
 	if val, isthere := os.LookupEnv(name); !isthere || val == "" {
 		return deflt
 	} else if ret, err := strconv.Atoi(val); err != nil {

@@ -35,9 +35,9 @@ var (
 	conduitsMu   sync.RWMutex
 	passwords    sync.Map
 
-	idsLength       = GetIntEnv("RANDOM_IDS_LENGTH", 33)      // Length of ID random strings, amounts to 192 bit
-	chunkSize       = GetIntEnv("CHUNK_SIZE_KB", 4096) * 1024 // 4Mb
-	bufferQueueSize = GetIntEnv("BUFFER_QUEUE_SIZE", 4)       // 16Mb total
+	idsLength       = getIntEnv("RANDOM_IDS_LENGTH", 33)      // Length of ID random strings, amounts to 192 bit
+	chunkSize       = getIntEnv("CHUNK_SIZE_KB", 4096) * 1024 // 4Mb
+	bufferQueueSize = getIntEnv("BUFFER_QUEUE_SIZE", 4)       // 16Mb total
 )
 
 const (
