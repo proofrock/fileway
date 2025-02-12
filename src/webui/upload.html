@@ -94,16 +94,15 @@
                 curlCommandInput.value = curlCmd;
                 resultContainer.classList.remove('d-none');
 
-                let chunkSize = 0;
+                let chunkList = [];
                 status.textContent = `Waiting for a download...`;
                 status2.textContent = `Leave this page open.`;
                 while (true) {
                     const pingResponse = await fetch(`${baseUrl}/ping/${conduitId}`, {
                         headers: { 'x-fileway-secret': secret }
                     });
-                    const pingText = await pingResponse.text();
-                    if (pingText) {
-                        chunkSize = parseInt(pingText);
+                    chunkList = await pingResponse.json();
+                    if (chunkList.length > 0) {
                         break;
                     }
                     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -112,13 +111,11 @@
                 resultContainer.classList.add('d-none');
 
                 let offset = 0;
-                let lap = 1;
-                const laps = Math.ceil(file.size / chunkSize);
-                while (offset < file.size) {
-                    status.textContent = `Uploading chunk ${lap}/${laps}: ${Math.round(lap * 100 / laps)}%`;
-                    lap++;
+                for (let lap = 0; lap < chunkList.length; lap++) {
+                    const perc = Math.round(lap * 100 / chunkList.length);
+                    status.textContent = `Uploading chunk ${lap + 1}/${chunkList.length}: ${perc}%`;
                     status2.textContent = `Leave this page open.`;
-                    const chunk = file.slice(offset, offset + chunkSize);
+                    const chunk = file.slice(offset, offset + chunkList[lap]);
                     const uploadResponse = await fetch(`${baseUrl}/ul/${conduitId}`, {
                         method: 'PUT',
                         headers: { 'x-fileway-secret': secret },
@@ -129,7 +126,7 @@
                         status.textContent = `Error in uploading: ${await uploadResponse.text()}`;
                         return;
                     }
-                    offset += chunkSize;
+                    offset += chunkList[lap];
                 }
 
                 status.textContent = 'All data sent. Bye!';
