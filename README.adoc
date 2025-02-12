@@ -1,65 +1,81 @@
-# 🚠 fileway v0.6.0
+= 🚠 fileway v0.6.0
+@proofrock <oss@germanorizzo.it>
+:toc:
+:sectnums:
+:source-highlighter: highlightjs
 
-## tl;dr
+== tl;dr
 
-Fileway is a real-time file transfer service that works through a web browser or command line. It lets two users exchange files through an intermediary server without storing data or requiring direct access to each other's systems - like a live-streaming version of WeTransfer™.
+Fileway is a real-time file transfer service that works through a web browser or command line. It lets two users exchange files through an intermediary server without storing data or requiring direct access to each other's systems - like a live-streaming version of WeTransfer(TM)footnote:[WeTransfer(TM) is a trademark of WeTransfer B.V.].
 
-## Overview
+== Overview
 
 `fileway` is a client/server application that accepts an upload of a single file; it blocks the upload until a download is initiated, then processes the upload and sends the data to the downloading client. It can be used to transfer files from a server to another, if the two servers don't easily "see" each other, by being installed to a third server (on the internet) that they both see.
 
-![Sequence diagram](resources/seq_diagram.png)
-<br>
-<br>
-The transfer is secure: a unique link is generated, and you should only take care to serve it via HTTPS (see the relevant section below).
+.Sequence diagram
+image::resources/seq_diagram.png[Sequence diagram]
+
+The transfer is secure: a unique link is generated, and you should only take care to serve it via HTTPS (<<DIWC,discussed below>>).
 
 Uploads can be done with a web interface - works on mobile, too - or via a python3 script, for shells. Downloads can be done via a browser or using the commandline, e.g. `curl`. The uploading script or web session must be kept online until the transfer is done. Of course, multiple concurrent transfers are possible, and it transfers one file at a time.
 
 `fileway` doesn't store anything on the server, it just keeps a buffer to make transfers smooth. It doesn't have any dependency other than `go`. It's distributed as a docker image, but you can easily build it yourself. Also provided, a docker image that includes `caddy` for simple HTTPS provisioning.
 
-Builds are reproducible. See 'Reproducing a build' for more info.
+Builds are <<RAB,reproducible>>.
 
-## Quickstart/demo
+== Quickstart/demo
 
 For a quick test of how it works, you can run it locally. Prerequisites are `docker`, a file to upload, nothing else.
 
 Run the server:
 
-```bash
+[source,bash]
+----
 docker run --rm -p 8080:8080 -e FILEWAY_SECRET_HASHES='$2a$10$I.NhoT1acD9XkXmXn1IMSOp0qhZDd63iSw1RfHZP7nzyg/ItX5eVa' ghcr.io/proofrock/fileway:latest
-```
+----
 
-> ❗ Please note the single quotes around the secret. It contains some `$`, so if you use a double quote, bash will treat them as env vars.
+[TIP]
+====
+Please note the single quotes around the secret. It contains some `$`, so if you use a double quote, bash will treat them as env vars.
+====
 
-Then open [http://localhost:8080](http://localhost:8080) to access the web page. Put `mysecret` as the secret, and choose a file. Press the Upload button.
+Then open http://localhost:8080 to access the web page. Put `mysecret` as the secret, and choose a file. Press the Upload button.
 
 In the two boxes that will be displayed, you'll find an URL to be open directly in a browser; and a `curl` commandline to download the file.
 
-> 💡 You can use anything to download that URL, as long as it supports taking the filename from the `Content-Disposition` header. That's the `-J` switch for `curl` and the `--content-disposition` one for `wget` (still marked experimental).
+[NOTE]
+====
+You can use anything to download that URL, as long as it supports taking the filename from the `Content-Disposition` header. That's the `-J` switch for `curl` and the `--content-disposition` one for `wget` (still marked experimental).
+====
 
-## Installation/usage
+== Installation/usage
 
 This section expands on the previous, to explain how to set up `fileway` in a proper architecture. It assumes a certain familiarity with `docker`, we won't explain all the concepts involved.
 
-A multi-arch docker image (AMD64 and AARCH64) is available in the 'Packages' section of this repository. The client python script to upload files is available in the 'Releases' section.
+A multi-arch docker image (arm64 and aarch64) is available in the https://github.com/users/proofrock/packages?repo_name=fileway[Packages] section of this repository. The client python script to upload files is available in the https://github.com/proofrock/fileway/releases[Releases] section.
 
-### Server
+=== Server
 
 It's a Go application but it's tailor-made to be configured and installed via Docker.
 
 Get a server, ideally already provisioned with a reverse proxy. `fileway` is best not exposed directly to internet, mainly because it doesn't provide HTTPS.
 
-Generate a secret, best a long (24+) sequence of letters and numbers (to avoid problems with escapes), and hash it using BCrypt (too see how, read later, 'Hashing the secret').
+Generate a secret, best a long (24+) sequence of letters and numbers, and hash it using BCrypt (<<HTS,instructions>>).
 
-> 💡 You can generate several hashes, and specify them as a comma-separated list.
+[NOTE]
+====
+You can generate several hashes, and specify them as a comma-separated list.
+====
 
-```bash
+[source,bash]
+----
 docker run --name fileway -p 8080:8080 -e FILEWAY_SECRET_HASHES=<secret_hash[,<another_one>,...]> ghcr.io/proofrock/fileway:latest
-```
+----
 
 Or, via docker compose:
 
-```yaml
+[source,yaml]
+----
 services:
   fileway:
     image: ghcr.io/proofrock/fileway:latest
@@ -68,39 +84,47 @@ services:
       - FILEWAY_SECRET_HASHES=<secret_hash[,<another_one>,...]>
     ports:
       - 8080:8080
-```
+----
 
 The following are the environment variables that you can set:
 
-env var | default value | description
----|---|---
-`FILEWAY_SECRET_HASHES` | *Mandatory* | Comma-separated list of BCrypt hashes for the secrets.
-`CHUNK_SIZE_KB` | 4096 | Chunk size for upload and internal buffer.
-`BUFFER_QUEUE_SIZE` | 4 | Internal buffer queue of chunks.
-`RANDOM_IDS_LENGTH` | 33 | Length of the random strings, e.g. in download links. 11 ~= 64bit.
-`REPRODUCIBLE_BUILD_INFO` | *not set* | If set, prints info for reproducing a build (see below) and exits.
+.Environment Variables
+|===
+| env var | default value | description
 
-> 💡 If a docker network is needed, you can set `internal: true` on it so that no outbound access is possible. `fileway` doesn't need to access any other system.
+| `FILEWAY_SECRET_HASHES` | *Mandatory* | Comma-separated list of BCrypt hashes for the secrets.
+| `CHUNK_SIZE_KB` | 4096 | Chunk size for upload and internal buffer.
+| `BUFFER_QUEUE_SIZE` | 4 | Internal buffer queue of chunks.
+| `RANDOM_IDS_LENGTH` | 33 | Length of the random strings, e.g. in download links. 11 ~= 64bit.
+| `REPRODUCIBLE_BUILD_INFO` | *Not set* | If set, prints info for <<RAB,reproducing a build>> and exits.
+|===
 
-#### Docker image with `caddy`
+[TIP]
+====
+If a docker network is needed, you can set `internal: true` on it so that no outbound access is possible. `fileway` doesn't need to access any other system.
+====
 
-It's strongly advised not to expose the server directly to the internet, for obvious reasons. You can configure a reverse proxy to add HTTPS; in this case read (for example) 'Using `caddy` as an external reverse proxy' later on.
+==== Docker image with `caddy` [[DIWC]]
+
+It's strongly advised not to expose the server directly to the internet, for obvious reasons. You can configure a reverse proxy to add HTTPS; <<CAD,for example caddy>>.
 
 For a simpler installation, a docker image `fileway-caddy` is available, to provide automatic HTTPS via Let's Encrypt and `caddy`. The usage is very similar to the basic image, but you must open the ports 80 and 443 (to caddy) and provide the `BASE_ADDRESS` env var to specify the web address you're publishing.
 
-```bash
+[source,bash]
+----
 docker run --name fileway -p 8080:8080 -e BASE_ADDRESS=fileway.example.com -e FILEWAY_SECRET_HASHES=<secret_hash[,<another_one>,...]> ghcr.io/proofrock/fileway-caddy:latest
-```
+----
 
-### Upload client
+=== Upload client
 
-#### Web upload client (via browser)
+==== Web upload client (via browser)
 
 A simple web client is provided. Access it by calling the "root" address, e.g. `https://fileway.example.com`. It should work fine on mobile, too.
 
-![A screenshot of the Web UI](resources/webui.png)
+.A screenshot of the Web UI
+image::resources/webui.png[A screenshot of the Web UI]
 
-#### Python upload client
+==== Python upload client
 
 Download the file `fileway_ul.py` from this repository. The script doesn't have any dependency other than python3.
 
@@ -108,28 +132,29 @@ Configure it with the secret and the base URL that you exposed to internet (in t
 
 Then just launch it:
 
-```bash
+[source,bash]
+----
 python3 fileway_ul.py myfile.bin
-```
+----
 
 This will output a link with the instructions to download. The link is unique and, while public, it's quite difficult to guess.
 
-```text
+----
 == fileway v0.6.0 ==
 All set up! Download your file using:
 - a browser, from https://fileway.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
 - a shell, with $> curl -OJ https://fileway.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
-```
+----
 
 After a client initiates a download and the `fileway_ul.py` sends all the data, the `fileway_ul.py` script will exit.
 
-### Download link
+=== Download link
 
 The link provided by the uploads clients will open a download page when opened in a browser, and will download the file when opened with a CLI application. To better understand how this is done, and troubleshoot, please read the 'Understanding the download URL' section.
 
-## Further topics
+== Further topics
 
-### Hashing the secret
+=== Hashing the secret [[HTS]]
 
 To hash a secret using BCrypt, you can:
 
@@ -137,17 +162,14 @@ To hash a secret using BCrypt, you can:
 
 - Use `htpasswd` from `apache-utils` (or the relevant package for your distribution). Run the following commandand remove the initial `:` from the result.
 
-  ```bash
   htpasswd -nbBC 10 "" mysecret
-  ```
 
 - Use `docker` and the `caddy` image, with the following commandline.
 
-  ```bash
   docker run --rm caddy caddy hash-password -p 'mysecret'
-  ```
 
-### Understanding the download URL
+
+=== Understanding the download URL
 
 Many apps that you may use to send the download URL to someone - Whatsapp, Slack, etc. - display a preview of any link you're pasting. So, if the link was one-time, it would be "used" and made invalid.
 
@@ -159,27 +181,29 @@ It should work for `curl`, `wget`, `HTTPie`, `aria2` and `axel`. Please report a
 
 At any rate, you can force the download by replacing the service in the URL. The usual link is `.../dl/...` while replacing that part with `.../ddl/...` will give you a direct download of the file. Just don't share it over Whatsapp, it will spoil it!
 
-### Using `caddy` as an external reverse proxy
+=== Using `caddy` as an external reverse proxy [[CAD]]
 
 This is an excerpt of a `caddyfile`:
 
-```caddyfile
+[source,caddy]
+----
 fileway.example.com {
   reverse_proxy localhost:8080
 }
-```
+----
 
-### Building the server
+=== Building the server
 
 In the root dir of this repository, use
 
-```bash
+[source,bash]
+----
 docker buildx build --build-arg VERSION=<version> --build-arg SOURCE_DATE_EPOCH=<epoch> . -f Dockerfile.simple -t fileway:<version>
-```
+----
 
 This will generate a docker image tagged as `fileway:<version>`. `docker` and `docker buildx` must be properly installed and available.
 
-### Reproducing a build
+=== Reproducing a build [[RAB]]
 
 `fileway` is somewhat security-sensitive, so being able to reproduce a build is desirable.
 
@@ -187,16 +211,18 @@ In order to ensure that a distributed docker image matches the sources, you can 
 
 First of all, in a temp directory, extract the executable file from the official image:
 
-```bash
+[source,bash]
+----
 mkdir tmp && cd tmp
 docker create --name temp ghcr.io/proofrock/fileway:v0.6.0 # or fileway-caddy
 docker export temp | tar xf - fileway
 docker rm temp
-```
+----
 
 Get the MD5 of the file and the parameters that were used to build it:
 
-```bash
+[source,bash]
+----
 md5sum fileway
 # 4855b28b1dcd089265b9472a5a020621  fileway
 REPRODUCIBLE_BUILD_INFO=1 ./fileway 
@@ -204,20 +230,17 @@ REPRODUCIBLE_BUILD_INFO=1 ./fileway
 # Variables used for this build:
 # - VERSION='v0.6.0'
 # - SOURCE_DATE_EPOCH='47836427937'
-```
+----
 
 Finally, download the correct version of the official repository, generate a binary with the appropriate dockerfile, using the values from the last output as the env vars values.
 
 Finally, confront the MD5 of the generated file.
 
-```bash
+[source,bash]
+----
 git clone -b "v0.6.0" https://github.com/proofrock/fileway fwrepo
 cd fwrepo
 docker build --build-arg VERSION='v0.6.0' --build-arg SOURCE_DATE_EPOCH='47836427937' --output=. -f Dockerfile.binary .
 md5sum fileway
 # 4855b28b1dcd089265b9472a5a020621  fileway
-```
-
----
-
-*\* WeTransfer™ is a trademark of WeTransfer B.V.*
+----
