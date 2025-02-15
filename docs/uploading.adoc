@@ -58,7 +58,11 @@ As simple as possible: just run it with a file as the only argument.
 ./fileway_ul.py myfile.bin
 ----
 
-It asks for the secret and returns the information for the download. Something of the sort:
+It look for the secret in a env variable named `FILEWAY_PASSWORD`; if not set, it asks for user input. 
+
+In both cases, the secret can be saved to avoid asking for it; see xref:#SAV[the relevant section].
+
+After setting up the upload, it prints the information for the download. Something of the sort:
 
 ----
 All set up! Download your file using:
@@ -66,8 +70,7 @@ All set up! Download your file using:
 - a shell, with $> curl -OJ https://fileway.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
 ----
 
-
-Keep it open until the upload is done. It exits automatically when it's finished.
+Keep the script open until the upload is done. It exits automatically when it's finished.
 
 === Advanced usage
 
@@ -105,9 +108,9 @@ Please note that:
 * The script uses Python's features to delete the file, but there may be some cases in which it's not possible to do it (e.g. if the OS halts abruptly);
 ** In this case, check in the temp directory for any file named `fileway_*.zip`.
 
-==== `--save`: Save the secret
+==== `--save`: Save the secret [[SAV]]
 
-If `--save` is specified, the secret is saved to a file in the user home directory, called `.fileway-creds`.
+If `--save` is specified, the secret (obtained via env var or asking to the user) is saved to a file in the user home directory, called `.fileway-creds`.
 
 `0400` permissions are set to it, when in Unix; this attempts to make it read only, just for the owner.
 

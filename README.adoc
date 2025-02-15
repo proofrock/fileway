@@ -8,6 +8,8 @@
 
 Fileway is a real-time file transfer service that works through a web browser or command line. It lets two users exchange files through an intermediary server without storing data or requiring direct access to each other's systems - like a live-streaming version of WeTransfer(TM)footnote:[WeTransfer(TM) is a trademark of WeTransfer B.V.].
 
+You can jump in following the xref:#TUT[tutorial] or read on for an architectural overview.
+
 == Overview
 
 `fileway` is a client/server application that transfer single files (xref:docs/uploading.adoc#ZIP[well, technically...]). It accepts an upload and blocks it until a download is initiated, then processes the upload and sends the data to the downloading client. 
@@ -25,7 +27,7 @@ Uploads can be done with a web interface - works on mobile, too - or via a pytho
 
 xref:docs/server.adoc#RAB[Builds are reproducible].
 
-== Test it!
+== Tutorial [[TUT]]
 
 For a quick test, you can run it locally. Prerequisites are `docker`, a file to upload, nothing else.
 

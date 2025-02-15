@@ -10,8 +10,23 @@ env:
   REGISTRY_IMAGE_CADDY: ghcr.io/proofrock/fileway-caddy
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: fileway tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Bats and bats libs
+        id: setup-bats
+        uses: bats-core/bats-action@3.0.0
+      - name: My test
+        shell: bash
+        run: make test
+
   release:
     runs-on: ubuntu-latest
+    needs:
+      - test
 
     steps:
       - name: Create Draft Release
@@ -30,6 +45,8 @@ jobs:
 
   build-docker:
     runs-on: ubuntu-latest
+    needs:
+      - test
     strategy:
       fail-fast: false
       matrix:
@@ -121,6 +138,8 @@ jobs:
 
   build-docker-caddy:
     runs-on: ubuntu-latest
+    needs:
+      - test
     strategy:
       fail-fast: false
       matrix:

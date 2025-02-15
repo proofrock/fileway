@@ -23,6 +23,9 @@ BASE_URL = "#BASE_URL#"
 import argparse, atexit, getpass, json, os, pathlib, random, stat
 import string, sys, tempfile, time, urllib.error, urllib.request, zipfile
 
+# Avoid buffering (harmful when capturing stdout in tests)
+sys.stdout.reconfigure(line_buffering=True)
+
 def upload_file(filepath, secret):
     # Extract filename from path
     filename = os.path.basename(filepath)

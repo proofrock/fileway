@@ -171,6 +171,15 @@ docker buildx build .                      \
 
 This will generate a statically linked Linux binary. `docker` and `docker buildx` must be properly installed and available.
 
+In alternative, there's a make target:
+
+[source,bash]
+----
+make build-instance
+----
+
+This is different, because it will build a "instance" build, with a `SOURCE_DATE_EPOCH` of `0` and a `VERSION` of `v0.0.999`. It's used for tests, you can use it to quickly whip up an environment if you don't have Docker.
+
 === Reproducing a build [[RAB]]
 
 `fileway` is somewhat security-sensitive, so being able to reproduce a build is desirable.
@@ -229,3 +238,14 @@ Finally, confront the MD5 of the generated file.
 md5sum fileway
 # 4855b28b1dcd089265b9472a5a020621  fileway
 ----
+
+== Testing
+
+There's a make target:
+
+[source,bash]
+----
+make test
+----
+
+It needs the link:https://bats-core.readthedocs.io[`bats`] package installed.
