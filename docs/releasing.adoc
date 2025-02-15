@@ -1,0 +1,55 @@
+= Releasing
+@proofrock <oss@germanorizzo.it>
+:toc:
+:sectnums:
+:source-highlighter: highlightjs
+
+== Update Go
+
+Check latest version of Go, and in case it change update `go.mod`.
+
+== Update libraries
+
+[source,bash]
+----
+cd src
+go get -u
+go mod tidy
+----
+
+== Builder image
+
+Get the docker image hash that will build the binary:
+
+[source,yaml]
+----
+docker pull golang:latest
+docker images --digests | grep golang | grep latest | awk '{print $3}'
+# sha256:927112936d6b496ed95f55f362cc09da6e3e624ef868814c56d55bd7323e0959
+----
+
+Replace it in the 3 files `Dockerfile.*`:
+
+[source,dockerfile]
+----
+FROM golang@sha256:927112936d6b496ed95f55f362cc09da6e3e624ef868814c56d55bd7323e0959 AS build
+----
+
+## Version
+
+Replace the new version string (e.g. `v0.6.2`) in the `README.md`.
+
+## Commit and tag
+
+Commit the version, tag it and push everything:
+
+[source,bash]
+----
+git add .
+git commit -S -m "v0.6.1" # Provide GPG password
+git push
+git tag -s "v0.6.1" -m "v0.6.1"
+git push origin "v0.6.1"
+----
+
+The CI pipeline should start.

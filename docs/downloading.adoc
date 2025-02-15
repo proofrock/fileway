@@ -1,0 +1,55 @@
+= Downloading
+@proofrock <oss@germanorizzo.it>
+:toc:
+:sectnums:
+:source-highlighter: highlightjs
+
+== At a glance
+
+* The uploaders generate two strings, an URL and a `curl` command;
+* Opening the URL with a browser shows a download page;
+* Opening it with a CLI app downloads the file.
+
+It should be pretty straightforward, but there are some details worth mentioning. Read on if you're interested.
+
+== Preserving the file name
+
+The download URL ends with a random string. CLI downloaders will attempt to save a file with _that_ name, and that's wrong.
+
+The file name is sent in the `Content-Disposition` header. 
+
+* A browser will detect it and save the file accordingly; 
+* `curl` will honor it when called with the `-J` switch; 
+* `wget` needs the experimental `--content-disposition` switch
+
+...and so on.
+
+== Serving the right way
+
+Why we want an intermediate, download page when opening via browser? Please remember that the link is one time, and the uploader "exits" when the download is done. So,if you send the link over Slack or Whatsapp, the automatic preview function will make it expire. An intermediate page avoids it.
+
+On the other hand, opening it with a CLI download tool should just download the file.
+
+This is obtained by checking the `User-Agent` header of the request: `curl` and the other CLI downloaders will present themselves with an ID that identifies them. If detected, the request is forwarded to the direct link.
+
+CLI downloaders that should be supported are:
+
+* `curl`
+* `wget`
+* `HTTPie`
+* `aria2`
+* `axel`
+
+For others, you may want to use the direct link; see the next section.
+
+== Direct download link
+
+To bypass this check, replace `.../dl/...` with `.../ddl/...` ina download link.
+
+ https://fileway.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
+
+becomes
+
+ https://fileway.example.com/ddl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
+
+Just be careful when sending it via services that show a preview.

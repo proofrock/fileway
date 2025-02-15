@@ -1,0 +1,231 @@
+= Server and Reverse Proxy
+@proofrock <oss@germanorizzo.it>
+:toc:
+:sectnums:
+:source-highlighter: highlightjs
+
+== At a glance
+
+* `fileway` is a Go application with no third party dependencies, distributed as docker images;
+* `fileway` itself is best not exposed directly to internet, mainly because it doesn't provide HTTPS;
+* To provide HTTPS, you can use the `-caddy` docker image or set up a reverse proxy yourself;
+* Environment variables can be used to configure the application;
+* Docker images are available for AMD64 and ARM64/aarch64;
+* The application should work with minimal system requirements.
+
+[NOTE]
+====
+This document assumes a familiarity with `docker`, it won't explain all the concepts involved.
+====
+
+== Install the server
+
+A multi-arch docker image (arm64 and aarch64) is available in the https://github.com/users/proofrock/packages?repo_name=fileway[Packages] section of this repository. 
+
+Get a server system, possibly already provisioned with a reverse proxy. 
+
+=== Hash a secret
+
+`fileway` is accessed with a secret; it's possible to specify several secrets, for a more fine-grained control. 
+
+In order not to configure them as plain text, each secret must be encrypted using BCrypt. You can then specify them as comma-separated values.
+
+[CAUTION]
+====
+Please use single quotes around the secret, or the comma-separated string. A Bcrypt string contains several `$` signs, so if you use a double quote, bash will attempt to resolve them as env vars.
+====
+
+You can:
+
+* Use a website, google for it. Usually these sites send the secret to their servers, so you shouldn't use them for "production" secrets.
+
+* Use `htpasswd` from `apache-utils` (or the relevant package for your distribution). Run the following commandand remove the initial `:` from the result.
+
+  htpasswd -nbBC 10 "" mysecret
+
+* Use `docker` and the `caddy` image, with the following commandline.
+
+  docker run --rm caddy caddy hash-password -p 'mysecret'
+
+=== Run a docker container
+
+There are two images, `fileway` is the base one (esposes port 8080) and `fileway-caddy` embeds a reverse proxy.
+
+`fileway` doesn't write anything on the filesystem, so there's no need to map volumes or bind mounts.
+
+Just run it:
+
+[source,bash]
+----
+docker run --name fileway \
+  -p 8080:8080 \
+  -e FILEWAY_SECRET_HASHES=<secret_hash[,<another_one>,...]> \
+  ghcr.io/proofrock/fileway:latest
+----
+
+Or, via docker compose:
+
+[source,yaml]
+----
+services:
+  fileway:
+    image: ghcr.io/proofrock/fileway:latest
+    container_name: fileway
+    environment:
+      - FILEWAY_SECRET_HASHES=<secret_hash[,<another_one>,...]>
+    ports:
+      - 8080:8080
+----
+
+[TIP]
+====
+If a docker network is needed, you can set `internal: true` on it so that no outbound access is possible. `fileway` doesn't need to access any other system.
+====
+
+=== Configuration
+
+The following are the environment variables that you can set to configure `fileway`:
+
+.Environment Variables
+|===
+| env var | default value | description
+
+| `FILEWAY_SECRET_HASHES` | *Mandatory* | Comma-separated list of BCrypt hashes for the secrets.
+| `CHUNK_SIZE_KB` | 4096 | Chunk size for upload and internal buffer.
+| `BUFFER_QUEUE_SIZE` | 4 | Internal buffer queue of chunks.
+| `RANDOM_IDS_LENGTH` | 33 | Length of the random strings, e.g. in download links. 11 chars ~= 64 bit.
+| `REPRODUCIBLE_BUILD_INFO` | *Not set* | If set, prints info for xref:#RAB[reproducing a build] and exits.
+|===
+
+== Reverse proxy
+
+As said, `fileway` doesn't provide HTTPS, it's not its role. It's possible and easy to configure a reverse proxy to provide HTTPS.
+
+=== `fileway-caddy` docker image
+
+If `fileway` is the only service exposed by the server system, it's possible to use a docker distribution that bundles `fileway` alongside `caddy`. 
+
+It exposes ports 80 and 443, and must be configured with an additional, mandatory parameter, the base URL. 
+
+[NOTE]
+====
+In order for `caddy` to negotiate the Let's Encrypt certificate, the ports must be reachable via this base URL: a DNS `A` record must be provided, etc. 
+====
+
+Then run it:
+
+[source,bash]
+----
+docker run --name fileway-caddy \
+  -p 8080:8080 \
+  -e BASE_ADDRESS=<base_url> \
+  -e FILEWAY_SECRET_HASHES=<secret_hash[,<another_one>,...]> \
+  ghcr.io/proofrock/fileway-caddy:latest
+----
+
+Or, via docker compose:
+
+[source,yaml]
+----
+services:
+  fileway-caddy:
+    image: ghcr.io/proofrock/fileway-caddy:latest
+    container_name: fileway-caddy
+    environment:
+      - FILEWAY_SECRET_HASHES=<secret_hash[,<another_one>,...]>
+      - BASE_ADDRESS=<base_url>
+    ports:
+      - 8080:8080
+----
+
+=== Other reverse proxies
+
+Of course, you can use other reverse proxy, in particular if you already have deployed them. A couple of remarks:
+
+* Be sure to allow the header `x-fileway-secret` to be forwarded;
+* Use the base `ghcr.io/proofrock/fileway` docker image
+
+An example of a `Caddyfile` entry follows:
+
+[source,caddy]
+----
+fileway.example.com {
+  reverse_proxy localhost:8080
+}
+----
+
+== Building
+
+=== Building the server
+
+In the root dir of this repository, use `docker`:
+
+[source,bash]
+----
+docker buildx build .                      \
+ --build-arg VERSION=<version>             \
+ --build-arg SOURCE_DATE_EPOCH=$(date +%s) \
+ --output ./                               \
+ -f Dockerfile.binary
+----
+
+This will generate a statically linked Linux binary. `docker` and `docker buildx` must be properly installed and available.
+
+=== Reproducing a build [[RAB]]
+
+`fileway` is somewhat security-sensitive, so being able to reproduce a build is desirable.
+
+Fileway supports being able to build a binary that matches the "official" distribution, from the sources; so it's possible to check that the binary actually comes from these sources, that can be inspected at will.
+
+You can follow these steps. I will use `v0.4.1'` for this example, any later version is also ok.
+
+First of all, in a temp directory, extract the executable file from the official image:
+
+[source,bash]
+----
+mkdir tmp && cd tmp
+docker create --name temp ghcr.io/proofrock/fileway:v0.4.1 # or fileway-caddy
+docker export temp | tar xf - fileway
+docker rm temp
+----
+
+Get the MD5 of the file:
+
+[source,bash]
+----
+md5sum fileway
+# 4855b28b1dcd089265b9472a5a020621  fileway
+----
+
+Now get the parameters that were used to build it:
+
+[source,bash]
+----
+REPRODUCIBLE_BUILD_INFO=1 ./fileway 
+# ...
+# Variables used for this build:
+# - VERSION='v0.4.1'
+# - SOURCE_DATE_EPOCH='47836427937'
+----
+
+Download the correct version of the official repository and build a binary using the parameters reported by the application.
+
+[source,bash]
+----
+git clone -b "v0.4.1" https://github.com/proofrock/fileway fwrepo
+cd fwrepo
+docker build \
+ --build-arg VERSION='v0.4.1' \
+ --build-arg SOURCE_DATE_EPOCH='47836427937' \
+ --output=. \
+ -f Dockerfile.binary \
+ .
+----
+
+Finally, confront the MD5 of the generated file.
+
+[source,bash]
+----
+md5sum fileway
+# 4855b28b1dcd089265b9472a5a020621  fileway
+----
