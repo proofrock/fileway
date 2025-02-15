@@ -55,13 +55,17 @@ var downloadPage []byte
 //go:embed webui/favicon.png
 var favicon []byte
 
+//go:embed webui/fileway_ul.py
+var cliUploader []byte
+
 var version string   // Set at build time, var VERSION
 var buildTime string // Set at build time, var SOURCE_DATE_EPOCH
 
 func main() {
-	// Replaces version in the web pages
+	// Replaces version in the web pages and cli uploader
 	downloadPage = replace(downloadPage, "#VERSION#", version)
 	uploadPage = replace(uploadPage, "#VERSION#", version)
+	cliUploader = replace(cliUploader, "#VERSION#", version)
 
 	// https://manytools.org/hacker-tools/ascii-banner/, profile "Slant"
 	fmt.Println("    _____ __")
@@ -108,6 +112,7 @@ func main() {
 	http.HandleFunc("/setup", setup)
 	http.HandleFunc("/ping/", ping)
 	http.HandleFunc("/ul/", ul)
+	http.HandleFunc("/fileway_ul.py", serveCLIUploader)
 	http.HandleFunc("/favicon.png", serveFile(favicon, "image/png"))
 	http.HandleFunc("/", serveFile(uploadPage, "text/html"))
 
@@ -310,4 +315,17 @@ func ul(w http.ResponseWriter, r *http.Request) {
 
 	nextSize := min(len(content)*chunkSizeRampFactor, chunkSize)
 	_, _ = w.Write([]byte(strconv.Itoa(nextSize)))
+}
+
+func serveCLIUploader(w http.ResponseWriter, r *http.Request) {
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	base_url := fmt.Sprintf("%s://%s", scheme, r.Host)
+	ret := replace(cliUploader, "#BASE_URL#", base_url)
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", "attachment; filename=\"fileway_ul.py\"")
+	w.Write(ret)
 }

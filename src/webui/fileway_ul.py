@@ -14,28 +14,16 @@
 #  limitations under the License.
  
 # Base URL for all HTTP requests
-BASE_URL = "http://localhost:8080"
-
-# Secret for uploading
-# If this row is commented out, it will ask for it at runtime
-SECRET = "mysecret" # Hashes to $2a$10$I.NhoT1acD9XkXmXn1IMSOp0qhZDd63iSw1RfHZP7nzyg/ItX5eVa
+BASE_URL = "#BASE_URL#"
 
  ############################
 ### Don't modify from here ###
  ############################
 
-import os
-import time
-import urllib.request
-import urllib.error
-import json
-import zipfile
-import tempfile
-import random
-import string
-import atexit
+import argparse, atexit, getpass, json, os, pathlib, random, stat
+import string, sys, tempfile, time, urllib.error, urllib.request, zipfile
 
-def upload_file(filepath):
+def upload_file(filepath, secret):
     # Extract filename from path
     filename = os.path.basename(filepath)
     # Get file size
@@ -45,7 +33,7 @@ def upload_file(filepath):
         # Setup transmission
         setup_url = f"{BASE_URL}/setup?filename={urllib.parse.quote(filename)}&size={filesize}"
         setup_req = urllib.request.Request(setup_url)
-        setup_req.add_header("x-fileway-secret", SECRET)
+        setup_req.add_header("x-fileway-secret", secret)
         
         try:
             with urllib.request.urlopen(setup_req, timeout=30) as response:
@@ -65,7 +53,7 @@ def upload_file(filepath):
                 while True:
                     ping_url = f"{BASE_URL}/ping/{conduitId}"
                     ping_req = urllib.request.Request(ping_url)
-                    ping_req.add_header("x-fileway-secret", SECRET)
+                    ping_req.add_header("x-fileway-secret", secret)
                     
                     with urllib.request.urlopen(ping_req, timeout=30) as ping_response:
                         ping_text = ping_response.read()
@@ -93,7 +81,7 @@ def upload_file(filepath):
                             method='PUT',
                             data=chunk
                         )
-                        ul_req.add_header("x-fileway-secret", SECRET)
+                        ul_req.add_header("x-fileway-secret", secret)
                         
                         with urllib.request.urlopen(ul_req, timeout=30) as ul_response:
                             if ul_response.status != 200:
@@ -138,44 +126,75 @@ def create_temp_zip(paths_list):
         print(f"Error creating ZIP file: {str(e)}")
         return None
 
-def abort_usage():
-    print("Usage: python3 fileway_ul.py [--zip] <file_path1> [<file_path_2>] [...]")
-    print(" (if --zip is specified, more than one file or dir can be provided)")
-    sys.exit(1)
+def obfuscate(text: str) -> str:
+    return ''.join(chr(ord(c) ^ 17) for c in text)
 
-# Example usage
+def deobfuscate(text: str) -> str:
+    return ''.join(chr(ord(c) ^ 17) for c in text)
+
+def get_secret(save_to_home):
+    creds_file = pathlib.Path.home() / '.fileway-creds'
+
+    try:
+        with open(creds_file, 'r') as f:
+            file_mode = os.stat(creds_file).st_mode
+            if (file_mode & 0o777) != 0o400:
+                print(f"Permissions for {creds_file} must be '0400'")
+                sys.exit(1)
+            secret = deobfuscate(f.read().strip())
+            return secret
+    except FileNotFoundError:
+        secret = getpass.getpass("Please enter the secret: ")
+        if save_to_home:
+            try:
+                with open(creds_file, 'w') as f:
+                    f.write(obfuscate(secret))
+                    os.chmod(creds_file, 0o400)
+                print(f"Secret saved to {creds_file}")
+            except Exception as e:
+                print(f"Error saving secret: {e}")
+                sys.exit(1)
+            finally:
+                print()
+        else:
+            print("Use '--save' to save the secret to user home and avoid the prompt")
+        
+        return secret
+    
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Uploader for Fileway')
+    
+    parser.add_argument('--save', dest='is_save', action='store_true',
+                       help='Save the secret to user home')
+    parser.add_argument('--zip', dest='is_zip', action='store_true',
+                       help='Enable zip mode')
+    parser.add_argument('files', nargs='*', help='List of files if --zip, just one if not')
+    
+    parser.set_defaults(is_save=False, is_zip=False)
+    return parser.parse_args()
+
 if __name__ == "__main__":
-    import sys
-
-    print("== fileway v0.6.1 ==")
+    print("== Fileway #VERSION# ==")
     print()
     
-    try:
-        SECRET
-    except NameError:
-        print()
-        from getpass import getpass
-        SECRET = getpass('Please enter secret: ')
-        print()
+    args = parse_arguments()
+    secret = get_secret(args.is_save)
     
-    is_zip = False
-    try:
-        is_zip = sys.argv[1] == '--zip'
-    except IndexError:
-        abort_usage()
+    if len(args.files) == 0:
+        print("No files specified")
+        sys.exit(1)
     
     file = ""
-    if is_zip:
-        if len(sys.argv) < 3:
-            abort_usage()
+    if args.is_zip:
         print("Zipping files...")
-        file = create_temp_zip(sys.argv[2:])
+        file = create_temp_zip(args.files)
         if file == None:
             sys.exit(1)
         print(f"Created upload file '{file}'")
     else:
-        if len(sys.argv) != 2:
-            abort_usage()
+        if len(args.files) > 1:
+            print("To upload multiple files, specify '--zip'")
+            sys.exit(1)
         file = sys.argv[1]
     
     # Check if file exists
@@ -193,4 +212,4 @@ if __name__ == "__main__":
         print(f"Error: Unable to read file '{file}'. Check file permissions.")
         sys.exit(1)
 
-    upload_file(file)
+    upload_file(file, secret)

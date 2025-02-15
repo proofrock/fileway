@@ -8,7 +8,6 @@ on:
 env:
   REGISTRY_IMAGE: ghcr.io/proofrock/fileway
   REGISTRY_IMAGE_CADDY: ghcr.io/proofrock/fileway-caddy
-  TIMESTAMP: 
 
 jobs:
   release:
@@ -26,17 +25,6 @@ jobs:
           release_name: Version ${{ github.ref_name }}
           draft: true
           prerelease: false
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Release Python Client
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: fileway_ul.py
-          asset_name: fileway_ul.py
-          asset_content_type: text/x-python
 
   # https://docs.docker.com/build/ci/github-actions/multi-platform/
 
