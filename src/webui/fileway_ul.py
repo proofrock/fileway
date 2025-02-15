@@ -144,7 +144,9 @@ def get_secret(save_to_home):
             secret = deobfuscate(f.read().strip())
             return secret
     except FileNotFoundError:
-        secret = getpass.getpass("Please enter the secret: ")
+        secret = os.getenv('FILEWAY_PASSWORD')
+        if secret == None:
+            secret = getpass.getpass("Please enter the secret: ")
         if save_to_home:
             try:
                 with open(creds_file, 'w') as f:
@@ -178,11 +180,12 @@ if __name__ == "__main__":
     print()
     
     args = parse_arguments()
-    secret = get_secret(args.is_save)
     
     if len(args.files) == 0:
         print("No files specified")
         sys.exit(1)
+    
+    secret = get_secret(args.is_save)
     
     file = ""
     if args.is_zip:
@@ -195,7 +198,7 @@ if __name__ == "__main__":
         if len(args.files) > 1:
             print("To upload multiple files, specify '--zip'")
             sys.exit(1)
-        file = sys.argv[1]
+        file = args.files[0]
     
     # Check if file exists
     if not os.path.exists(file):
