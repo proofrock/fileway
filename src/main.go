@@ -46,16 +46,16 @@ const (
 	expiryMillis        = 4 * 60 * 1000 // cleanup unused/stale sessions, not accessed for > 4 minutes
 )
 
-//go:embed webui/upload.html
+//go:embed static/upload.html
 var uploadPage []byte
 
-//go:embed webui/download.html
+//go:embed static/download.html
 var downloadPage []byte
 
-//go:embed webui/favicon.png
+//go:embed static/favicon.png
 var favicon []byte
 
-//go:embed webui/fileway_ul.py
+//go:embed static/fileway_ul.py
 var cliUploader []byte
 
 var version string   // Set at build time, var VERSION

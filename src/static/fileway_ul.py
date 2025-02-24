@@ -27,6 +27,7 @@ import string, sys, tempfile, time, urllib.error, urllib.request, zipfile
 sys.stdout.reconfigure(line_buffering=True)
 
 def upload_file(filepath, secret):
+    user_agent = "FilewayUploader"
     # Extract filename from path
     filename = os.path.basename(filepath)
     # Get file size
@@ -37,6 +38,7 @@ def upload_file(filepath, secret):
         setup_url = f"{BASE_URL}/setup?filename={urllib.parse.quote(filename)}&size={filesize}"
         setup_req = urllib.request.Request(setup_url)
         setup_req.add_header("x-fileway-secret", secret)
+        setup_req.add_header("user-agent", user_agent)
         
         try:
             with urllib.request.urlopen(setup_req, timeout=30) as response:
@@ -57,6 +59,7 @@ def upload_file(filepath, secret):
                     ping_url = f"{BASE_URL}/ping/{conduitId}"
                     ping_req = urllib.request.Request(ping_url)
                     ping_req.add_header("x-fileway-secret", secret)
+                    ping_req.add_header("user-agent", user_agent)
                     
                     with urllib.request.urlopen(ping_req, timeout=30) as ping_response:
                         ping_text = ping_response.read()
@@ -85,6 +88,7 @@ def upload_file(filepath, secret):
                             data=chunk
                         )
                         ul_req.add_header("x-fileway-secret", secret)
+                        ul_req.add_header("user-agent", user_agent)
                         
                         with urllib.request.urlopen(ul_req, timeout=30) as ul_response:
                             if ul_response.status != 200:
@@ -218,4 +222,11 @@ if __name__ == "__main__":
         print(f"Error: Unable to read file '{file}'. Check file permissions.")
         sys.exit(1)
 
-    upload_file(file, secret)
+    try:
+        upload_file(file, secret)
+    except KeyboardInterrupt:
+        print('Interrupted')
+        try:
+            sys.exit(130)
+        except SystemExit:
+            os._exit(130)
