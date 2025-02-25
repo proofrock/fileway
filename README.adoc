@@ -40,7 +40,7 @@ docker run --rm -p 8080:8080 -e FILEWAY_SECRET_HASHES='$2a$10$I.NhoT1acD9XkXmXn1
 
 [TIP]
 ====
-Please note the single quotes around the secret. It contains some `$`, so if you use a double quote, bash will treat them as env vars.
+The hash is in BCrypt format. Please note the single quotes around it. It contains some `$`, so if you use a double quote, bash will treat them as env vars.
 ====
 
 Then open http://localhost:8080 to access the upload web page. Put `mysecret` as the secret, and choose a file. Press the Upload button.
