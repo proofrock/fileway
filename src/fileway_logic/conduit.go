@@ -11,19 +11,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package fileway
 
 import (
 	"fmt"
 	"sync/atomic"
 	"time"
+
+	"github.com/proofrock/fileway/utils"
+	"github.com/proofrock/fileway/utils/latch"
 )
 
+const (
+	chunkSizeInitial    = 4096 // initially 4k
+	chunkSizeRampFactor = 2    // x2 every chunk, until it reaches chunkSize
+)
+
+/*
+Conduit represents a single transfer conduit, which can be used to upload or download files or text.
+It is a thread-safe structure that can be accessed concurrently by multiple goroutines.
+*/
 type Conduit struct {
-	Id        string
-	IsText    bool
-	Filename  string
-	Size      int64
+	Id       string
+	IsText   bool
+	Filename string
+	Size     int64
+
 	ChunkPlan []int
 
 	ChunkQueue chan []byte
@@ -32,22 +45,29 @@ type Conduit struct {
 
 	lastAccessed    atomic.Int64
 	downloadStarted atomic.Bool
-	latch           *Latch
+	Latch           *latch.Latch
 }
 
-func NewConduit(isText bool, filename string, size int64, secret string) *Conduit {
+// Creates a new Conduit instance
+func newConduit(
+	isText bool,
+	filename string,
+	size int64,
+	secret string,
+	chunkSize, bufferQueueSize, idsLength int,
+) *Conduit {
 	ret := &Conduit{
-		Id:         genRandomString(idsLength),
+		Id:         utils.GenRandomString(idsLength),
 		IsText:     isText,
 		Filename:   filename,
 		Size:       size,
 		secret:     secret,
 		ChunkQueue: make(chan []byte, bufferQueueSize),
-		latch:      NewLatch(),
+		Latch:      latch.NewLatch(),
 	}
 
 	if !ret.IsText {
-		ret.ChunkPlan = buildChunkPlan(size)
+		ret.ChunkPlan = buildChunkPlan(size, chunkSize)
 	} else {
 		ret.ChunkPlan = []int{int(size)}
 	}
@@ -56,7 +76,7 @@ func NewConduit(isText bool, filename string, size int64, secret string) *Condui
 	return ret
 }
 
-func buildChunkPlan(size int64) []int {
+func buildChunkPlan(size int64, chunkSize int) []int {
 	if size < chunkSizeInitial {
 		return []int{int(size)}
 	}
@@ -75,18 +95,22 @@ func buildChunkPlan(size int64) []int {
 	}
 }
 
+// IsUploadSecretWrong checks if the provided secret is wrong
 func (c *Conduit) IsUploadSecretWrong(candidate string) bool {
 	return c.secret != candidate
 }
 
+// touch updates the lastAccessed timestamp to the current time
 func (c *Conduit) touch() {
 	c.lastAccessed.Store(time.Now().UnixMilli())
 }
 
+// WasAccessedBefore checks if the lastAccessed timestamp is before the provided cutoff time
 func (c *Conduit) WasAccessedBefore(cutoffTime int64) bool {
 	return c.lastAccessed.Load() < cutoffTime
 }
 
+// Download starts the download process
 func (c *Conduit) Download() error {
 	if c.downloadStarted.Load() {
 		return ErrConduitAlreadyDownloading
@@ -94,16 +118,12 @@ func (c *Conduit) Download() error {
 
 	c.touch()
 	c.downloadStarted.Store(true)
-	c.latch.Unlock()
+	c.Latch.Unlock()
 
 	return nil
 }
 
-func (c *Conduit) IsDownloading() bool {
-	c.touch()
-	return c.downloadStarted.Load()
-}
-
+// Offer offers a chunk of content to the Conduit (upload)
 func (c *Conduit) Offer(content []byte) error {
 	c.touch()
 	select {

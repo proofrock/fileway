@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package utils
 
 import (
 	"crypto/rand"
@@ -23,9 +23,10 @@ import (
 	"time"
 )
 
-const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+const alphabet string = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
-func genRandomString(length int) string {
+// Generates a random string of the given length using [A-Za-z0-9] characters
+func GenRandomString(length int) string {
 	result := make([]byte, length)
 	for i := 0; i < length; i++ {
 		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(alphabet))))
@@ -34,7 +35,9 @@ func genRandomString(length int) string {
 	return string(result)
 }
 
-func getIntEnv(name string, deflt int) int {
+// Returns the value of the given environment variable as an integer,
+// or the default value if the variable is not set or is invalid
+func GetIntEnv(name string, deflt int) int {
 	if val, isthere := os.LookupEnv(name); !isthere || val == "" {
 		return deflt
 	} else if ret, err := strconv.Atoi(val); err != nil {
@@ -44,13 +47,15 @@ func getIntEnv(name string, deflt int) int {
 	}
 }
 
-func replace(src []byte, toreplace, replacer string) []byte {
+// Replaces all occurrences of the given string in the byte slice
+func Replace(src []byte, toreplace, replacer string) []byte {
 	ret := string(src)
 	ret = strings.ReplaceAll(ret, toreplace, replacer)
 	return []byte(ret)
 }
 
-func humanReadableSize(bytes int64) string {
+// Returns a human-readable string representation of the given byte size
+func HumanReadableSize(bytes int64) string {
 	const unit = 1024
 	if bytes < unit {
 		return fmt.Sprintf("%d B", bytes)
@@ -65,6 +70,7 @@ func humanReadableSize(bytes int64) string {
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGT"[exp])
 }
 
-func nowString() string {
+// Returns the current time in the format "yyyyMMdd_HHmmss"
+func NowString() string {
 	return time.Now().Format("20060102_150405")
 }

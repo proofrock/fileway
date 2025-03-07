@@ -23,27 +23,17 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
+	"github.com/proofrock/fileway/auth"
+	fw "github.com/proofrock/fileway/fileway_logic"
+	"github.com/proofrock/fileway/utils"
 )
 
 var (
-	conduits     = make(map[string]*Conduit)
-	secretHashes = make([][]byte, 0)
-	conduitsMu   sync.RWMutex
-	passwords    sync.Map
-
-	idsLength       = getIntEnv("RANDOM_IDS_LENGTH", 33)      // Length of ID random strings, amounts to 192 bit
-	chunkSize       = getIntEnv("CHUNK_SIZE_KB", 4096) * 1024 // 4Mb
-	bufferQueueSize = getIntEnv("BUFFER_QUEUE_SIZE", 4)       // 16Mb total
-)
-
-const (
-	chunkSizeInitial    = 4096          // initially 4k
-	chunkSizeRampFactor = 2             // x2 every chunk, until it reaches chunkSize
-	expiryMillis        = 4 * 60 * 1000 // cleanup unused/stale sessions, not accessed for > 4 minutes
+	idsLength       = utils.GetIntEnv("RANDOM_IDS_LENGTH", 33)      // Length of ID random strings, amounts to 192 bit
+	chunkSize       = utils.GetIntEnv("CHUNK_SIZE_KB", 4096) * 1024 // 4Mb
+	bufferQueueSize = utils.GetIntEnv("BUFFER_QUEUE_SIZE", 4)       // 16Mb total
 )
 
 //go:embed static/upload.html
@@ -64,12 +54,15 @@ var cliUploader []byte
 var version string   // Set at build time, var VERSION
 var buildTime string // Set at build time, var SOURCE_DATE_EPOCH
 
+var authenticator *auth.Auth
+var conduits = fw.NewConduitSet()
+
 func main() {
 	// Replaces version in the web pages and cli uploader
-	downloadPage = replace(downloadPage, "#VERSION#", version)
-	downloadPageForTxt = replace(downloadPageForTxt, "#VERSION#", version)
-	uploadPage = replace(uploadPage, "#VERSION#", version)
-	cliUploader = replace(cliUploader, "#VERSION#", version)
+	downloadPage = utils.Replace(downloadPage, "#VERSION#", version)
+	downloadPageForTxt = utils.Replace(downloadPageForTxt, "#VERSION#", version)
+	uploadPage = utils.Replace(uploadPage, "#VERSION#", version)
+	cliUploader = utils.Replace(cliUploader, "#VERSION#", version)
 
 	// https://manytools.org/hacker-tools/ascii-banner/, profile "Slant"
 	fmt.Println("    _____ __")
@@ -92,23 +85,14 @@ func main() {
 	if env == "" {
 		log.Fatal("FATAL: missing environment variable FILEWAY_SECRET_HASHES")
 	}
-	for _, s := range strings.Split(env, ",") {
-		secretHashes = append(secretHashes, []byte(s))
-	}
+
+	authenticator = auth.NewAuth(env)
 
 	fmt.Println("Parameters:")
 	fmt.Printf("- Chunk size (Kb): %d\n", chunkSize)
 	fmt.Printf("- Internal chunk queue size: %d Kb\n", bufferQueueSize)
 	fmt.Printf("- Random IDs length: %d\n", idsLength)
 	fmt.Println()
-
-	// Setup periodic cleanup
-	go func() {
-		ticker := time.NewTicker(1 * time.Minute)
-		for range ticker.C {
-			cleanupStaleConduits()
-		}
-	}()
 
 	// Routes
 	http.HandleFunc("/dl/", dl)   // Shows a download page, if downloader "looks like" CLI redirects to ddl
@@ -131,45 +115,11 @@ func serveFile(file []byte, mime string) func(http.ResponseWriter, *http.Request
 	}
 }
 
-func cleanupStaleConduits() {
-	conduitsMu.Lock()
-	defer conduitsMu.Unlock()
-
-	cutoffTime := time.Now().UnixMilli() - expiryMillis
-	i := 0
-	for id, conduit := range conduits {
-		if conduit.WasAccessedBefore(cutoffTime) {
-			i++
-			delete(conduits, id)
-		}
-	}
-	if i > 0 {
-		fmt.Printf("%d sessions were garbage collected\n", i)
-	}
-}
-
-func getConduit(r *string) *Conduit {
+func getConduit(r *string) *fw.Conduit {
 	parts := strings.Split(*r, "/")
 	conduitId := parts[len(parts)-1]
 
-	conduitsMu.RLock()
-	defer conduitsMu.RUnlock()
-
-	conduit := conduits[conduitId]
-	return conduit
-}
-
-func authenticate(pwd string) bool {
-	if _, ok := passwords.Load(pwd); ok {
-		return true
-	}
-	for _, hash := range secretHashes {
-		if err := bcrypt.CompareHashAndPassword(hash, []byte(pwd)); err == nil {
-			passwords.Store(pwd, true)
-			return true
-		}
-	}
-	return false
+	return conduits.GetConduit(conduitId)
 }
 
 // This is the basic handler for downloads; it shows a download page
@@ -191,8 +141,8 @@ func dl(w http.ResponseWriter, r *http.Request) {
 		if conduit.IsText {
 			_downloadPage = downloadPageForTxt
 		} else {
-			fileString := fmt.Sprintf("%s (%s)", conduit.Filename, humanReadableSize(conduit.Size))
-			_downloadPage = replace(downloadPage, "#FILE_INFO#", fileString)
+			fileString := fmt.Sprintf("%s (%s)", conduit.Filename, utils.HumanReadableSize(conduit.Size))
+			_downloadPage = utils.Replace(downloadPage, "#FILE_INFO#", fileString)
 		}
 
 		serveFile(_downloadPage, "text/html")(w, r)
@@ -243,9 +193,7 @@ func ddl(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	conduitsMu.Lock()
-	delete(conduits, conduit.Id)
-	conduitsMu.Unlock()
+	conduits.DelConduit(conduit.Id)
 }
 
 func setup(w http.ResponseWriter, r *http.Request) {
@@ -253,7 +201,7 @@ func setup(w http.ResponseWriter, r *http.Request) {
 
 	passedSecret := r.Header.Get("x-fileway-secret")
 
-	if !authenticate(passedSecret) {
+	if !authenticator.Authenticate(passedSecret) {
 		http.Error(w, "Secret Mismatch", http.StatusUnauthorized)
 		return
 	}
@@ -262,7 +210,7 @@ func setup(w http.ResponseWriter, r *http.Request) {
 	sizeStr := qry.Get("size")
 	isText := qry.Get("txt") == "1"
 	if isText {
-		filename = fmt.Sprintf("fileway_%s.txt", nowString())
+		filename = fmt.Sprintf("fileway_%s.txt", utils.NowString())
 	} else {
 		filename = qry.Get("filename")
 	}
@@ -277,13 +225,14 @@ func setup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conduit := NewConduit(isText, filename, size, passedSecret)
+	bqs := bufferQueueSize
+	if isText {
+		bqs = 1
+	}
 
-	conduitsMu.Lock()
-	conduits[conduit.Id] = conduit
-	conduitsMu.Unlock()
+	conduitId := conduits.NewConduit(isText, filename, size, passedSecret, chunkSize, bqs, idsLength)
 
-	_, _ = w.Write([]byte(conduit.Id))
+	_, _ = w.Write([]byte(conduitId))
 }
 
 func ping(w http.ResponseWriter, r *http.Request) {
@@ -300,7 +249,7 @@ func ping(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var ret []byte
-	if conduit.latch.Wait(20 * time.Second) {
+	if conduit.Latch.Wait(20 * time.Second) {
 		if _ret, err := json.Marshal(conduit.ChunkPlan); err != nil {
 			http.Error(w, "Marshaling issue", http.StatusInternalServerError)
 			return
@@ -338,9 +287,6 @@ func ul(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusRequestTimeout)
 		return
 	}
-
-	nextSize := min(len(content)*chunkSizeRampFactor, chunkSize)
-	_, _ = w.Write([]byte(strconv.Itoa(nextSize)))
 }
 
 func serveCLIUploader(w http.ResponseWriter, r *http.Request) {
@@ -349,7 +295,7 @@ func serveCLIUploader(w http.ResponseWriter, r *http.Request) {
 		scheme = "https"
 	}
 	base_url := fmt.Sprintf("%s://%s", scheme, r.Host)
-	ret := replace(cliUploader, "#BASE_URL#", base_url)
+	ret := utils.Replace(cliUploader, "#BASE_URL#", base_url)
 
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Disposition", "attachment; filename=\"fileway_ul.py\"")
