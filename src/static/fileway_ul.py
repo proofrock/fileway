@@ -140,6 +140,9 @@ def deobfuscate(text: str) -> str:
     return ''.join(chr(ord(c) ^ 17) for c in text)
 
 def get_secret(save_to_home):
+    if "FILEWAY_PASSWORD" in os.environ:
+        return os.getenv('FILEWAY_PASSWORD')
+    
     creds_file = pathlib.Path.home() / '.fileway-creds'
 
     try:
@@ -151,9 +154,7 @@ def get_secret(save_to_home):
             secret = deobfuscate(f.read().strip())
             return secret
     except FileNotFoundError:
-        secret = os.getenv('FILEWAY_PASSWORD')
-        if secret == None:
-            secret = getpass.getpass("Please enter the secret: ")
+        secret = getpass.getpass("Please enter the secret: ")
         if save_to_home:
             try:
                 with open(creds_file, 'w') as f:
