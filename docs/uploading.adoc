@@ -26,7 +26,7 @@ Something like this should be shown:
 .A screenshot of the Web UI
 image::../resources/webui.png[A screenshot of the Web UI]
 
-Simply provide the secret, and choose a file. And push "Upload"
+Simply provide the secret, and either choose a file or input a secret text to share. And push "Upload".
 
 == The CLI script
 
@@ -51,6 +51,8 @@ The downloaded script is tailor-made for your installation; the URL of the servi
 
 === Using it
 
+==== For files
+
 As simple as possible: just run it with a file as the only argument.
 
 [source,bash]
@@ -71,6 +73,10 @@ All set up! Download your file using:
 ----
 
 Keep the script open until the upload is done. It exits automatically when it's finished.
+
+==== For text
+
+If you want to share a secret text, use the `--txt` commandline arguments, with a text as the other argument.
 
 === Advanced usage
 

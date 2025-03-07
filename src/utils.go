@@ -20,6 +20,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -62,4 +63,8 @@ func humanReadableSize(bytes int64) string {
 	}
 
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGT"[exp])
+}
+
+func nowString() string {
+	return time.Now().Format("20060102_150405")
 }

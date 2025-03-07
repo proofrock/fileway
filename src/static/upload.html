@@ -43,9 +43,30 @@
         <div class="mb-2">
             <input type="password" class="form-control" id="secret" placeholder="Secret">
         </div>
-        <div class="mb-2">
+
+        <hr />
+
+        <!-- New radio button set -->
+        <div class="btn-group mb-2 w-100" role="group" aria-label="Upload Type">
+            <input type="radio" class="btn-check" name="uploadType" id="fileUpload" autocomplete="off" checked>
+            <label class="btn btn-outline-primary btn-sm" for="fileUpload">File</label>
+
+            <input type="radio" class="btn-check" name="uploadType" id="textUpload" autocomplete="off">
+            <label class="btn btn-outline-primary btn-sm" for="textUpload">Text</label>
+        </div>
+
+        <!-- File input (will be hidden/shown based on radio selection) -->
+        <div id="fileInputContainer" class="mb-2">
             <input type="file" class="form-control" id="fileInput">
         </div>
+
+        <!-- Secret text textarea (will be hidden/shown based on radio selection) -->
+        <div id="textInputContainer" class="mb-2" style="display: none;">
+            <textarea class="form-control" id="textInput" rows="3" placeholder="Enter your secret text"></textarea>
+        </div>
+
+        <hr />
+
         <button class="btn btn-primary w-100" id="uploadButton">Upload</button>
         <hr />
         <div id="status" class="mt-3 text-muted">Ready to start!</div>
@@ -69,8 +90,18 @@
             </em></div>
     </div>
     <script>
+        // Add event listeners for radio buttons to toggle input visibility
+        document.getElementById('fileUpload').addEventListener('change', function () {
+            document.getElementById('fileInputContainer').style.display = 'block';
+            document.getElementById('textInputContainer').style.display = 'none';
+        });
+
+        document.getElementById('textUpload').addEventListener('change', function () {
+            document.getElementById('fileInputContainer').style.display = 'none';
+            document.getElementById('textInputContainer').style.display = 'block';
+        });
+
         async function uploadFile() {
-            const file = document.getElementById('fileInput').files[0];
             const baseUrl = `${window.location.protocol}//${window.location.host}`;
             const secret = document.getElementById('secret').value;
             const status = document.getElementById('status');
@@ -79,14 +110,29 @@
             const downloadUrlInput = document.getElementById('downloadUrl');
             const curlCommandInput = document.getElementById('curlCommand');
 
-            if (!file) {
-                status.textContent = 'Please select a file';
-                status2.textContent = '';
-                return;
+            // Determine upload type
+            const isFileUpload = document.getElementById('fileUpload').checked;
+            const istextUpload = document.getElementById('textUpload').checked;
+
+            let file, text;
+            if (isFileUpload) {
+                file = document.getElementById('fileInput').files[0];
+                if (!file) {
+                    status.textContent = 'Please select a file';
+                    status2.textContent = '';
+                    return;
+                }
+            } else if (istextUpload) {
+                text = document.getElementById('textInput').value.trim();
+                if (!text) {
+                    status.textContent = 'Please enter a secret text';
+                    status2.textContent = '';
+                    return;
+                }
             }
 
             try {
-                const setupUrl = `${baseUrl}/setup?filename=${encodeURIComponent(file.name)}&size=${file.size}`;
+                const setupUrl = `${baseUrl}/setup?${isFileUpload ? 'filename=' + encodeURIComponent(file.name) + '&' : ''}size=${isFileUpload ? file.size : new Blob([text]).size}&txt=${isFileUpload ? '0' : '1'}`;
                 const setupResponse = await fetch(setupUrl, {
                     headers: { 'x-fileway-secret': secret }
                 });
@@ -98,7 +144,8 @@
 
                 const conduitId = await setupResponse.text();
                 const downloadUrl = `${baseUrl}/dl/${conduitId}`;
-                const curlCmd = `curl -OJ ${downloadUrl}`;
+                const curlOpts = isFileUpload ? '-OJ ' : '';
+                const curlCmd = `curl ${curlOpts}${downloadUrl}`;
                 downloadUrlInput.value = downloadUrl;
                 curlCommandInput.value = curlCmd;
                 resultContainer.classList.remove('d-none');
@@ -123,7 +170,16 @@
                     const perc = Math.round(lap * 100 / chunkList.length);
                     status.textContent = `Uploading chunk ${lap + 1}/${chunkList.length}: ${perc}%`;
                     status2.textContent = `Leave this page open.`;
-                    const chunk = file.slice(offset, offset + chunkList[lap]);
+
+                    let chunk;
+                    if (isFileUpload) {
+                        chunk = file.slice(offset, offset + chunkList[lap]);
+                    } else {
+                        // For text, slice the text as a Blob
+                        const textBlob = new Blob([text]);
+                        chunk = textBlob.slice(offset, offset + chunkList[lap]);
+                    }
+
                     const uploadResponse = await fetch(`${baseUrl}/ul/${conduitId}`, {
                         method: 'PUT',
                         headers: { 'x-fileway-secret': secret },
@@ -138,10 +194,16 @@
                 }
 
                 status.textContent = 'All data sent. Bye!';
-                status2.textContent = 'Please select another file';
-                document.getElementById('fileInput').value = null;
+                status2.textContent = 'Please select another file or text';
+
+                // Reset inputs
+                if (isFileUpload) {
+                    document.getElementById('fileInput').value = null;
+                } else {
+                    document.getElementById('textInput').value = '';
+                }
             } catch (error) {
-                status.textContent = `Error: ${error.message}`;
+                status.textContent = `Error: ${error.text}`;
                 status2.textContent = 'Reload this page to retry';
             }
         }

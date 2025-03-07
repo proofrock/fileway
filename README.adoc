@@ -8,20 +8,25 @@
 
 Fileway is a real-time file transfer service that works through a web browser or command line. It lets two users exchange files through an intermediary server without storing data or requiring direct access to each other's systems - like a live-streaming version of WeTransfer(TM)footnote:[WeTransfer(TM) is a trademark of WeTransfer B.V.].
 
+[NOTE]
+====
+While it's called _file_-way, it can also transfer text secrets!
+====
+
 You can jump in following the xref:#TUT[tutorial] or read on for an architectural overview.
 
 == Overview
 
-`fileway` is a client/server application that transfer single files (xref:docs/uploading.adoc#ZIP[well, technically...]). It accepts an upload and blocks it until a download is initiated, then processes the upload and sends the data to the downloading client. 
+`fileway` is a client/server application that transfer single files (xref:docs/uploading.adoc#ZIP[well, technically...]) or text snippets. It accepts an upload and blocks it until a download is initiated, then processes the upload and sends the data to the downloading client. 
 
-It can be used to relay files from a server to another, if the two servers can't easily "see" each other but can see a third server, where `fileway` is installed.
+It can be used to relay files (or text) from a server to another, if the two servers can't easily "see" each other but can see a third server, where `fileway` is installed.
 
 .Sequence diagram
 image::resources/seq_diagram.png[Sequence diagram]
 
 The transfer is secure: a unique link is generated, and you should only take care to serve it via HTTPS (<<DIWC,discussed below>>).
 
-Uploads can be done with a web interface - works on mobile, too - or via a python3 script, for shells. Downloads can be done via a browser or using the commandline, e.g. `curl`. The uploading script or web session must be kept online until the transfer is done. Of course, multiple concurrent transfers are possible, and it transfers one file at a time.
+Uploads can be done with a web interface - works on mobile, too - or via a python3 script, for shells. Downloads can be done via a browser or using the commandline, e.g. `curl`. The uploading script or web session must be kept online until the transfer is done. Of course, multiple concurrent transfers are possible, and it transfers one file/text at a time.
 
 `fileway` doesn't store anything on the server, it just keeps a buffer to make transfers smooth. It doesn't have any dependency other than `go`. It's distributed as a docker image, but you can easily build it yourself. Also provided, a docker image that includes `caddy` for simple HTTPS provisioning.
 
@@ -40,16 +45,18 @@ docker run --rm -p 8080:8080 -e FILEWAY_SECRET_HASHES='$2a$10$I.NhoT1acD9XkXmXn1
 
 [TIP]
 ====
-The hash is in BCrypt format. Please note the single quotes around it. It contains some `$`, so if you use a double quote, bash will treat them as env vars.
+The hash is in BCrypt format, so it has some `$`; it must be escaped appropriately. In this case, using single quotes.
 ====
 
-Then open http://localhost:8080 to access the upload web page. Put `mysecret` as the secret, and choose a file. Press the Upload button.
+Then open http://localhost:8080 to access the upload web page. Put `mysecret` as the secret, and choose a file; or select the right radio button and input a text.
+
+Press the Upload button.
 
 In the two boxes that will be displayed, you'll find an URL to be open directly in a browser; and a `curl` commandline to download the file.
 
 [NOTE]
 ====
-You can use anything to download that URL, as long as it supports taking the filename from the `Content-Disposition` header. That's the `-J` switch for `curl` and the `--content-disposition` one for `wget` (still marked experimental).
+You can use anything to download a file URL, as long as it supports taking the filename from the `Content-Disposition` header. That's the `-J` switch for `curl` and the `--content-disposition` one for `wget` (still marked experimental).
 ====
 
 == Documentation

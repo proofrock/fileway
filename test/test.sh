@@ -10,6 +10,7 @@ setup_file() {
 }
 
 @test "App is reachable" {
+    sleep 1
     curl http://localhost:8080 > /dev/null
 }
 
@@ -58,7 +59,6 @@ wait_for_grep_in_file() {
     wait_for_grep_in_file ../output browser 15
     sleep 1
     cd .. # test/
-    cp output ../out
     URL=$(cat output | grep "a browser" | awk '{print $5}')
     curl -OJ $URL
     find . -name "*.zip" -exec unzip -o {} \;
@@ -68,6 +68,18 @@ wait_for_grep_in_file() {
     HASH1=$(cd src/ && md5sum rnd2.bin)
     HASH2=$(md5sum rnd2.bin)
     [[ "$HASH1" == "$HASH2" ]]
+}
+
+
+@test "Python upload (text)" {
+    dld_python_script
+    cd test/src
+    FILEWAY_PASSWORD="mysecret" ../fileway_ul.py --txt Ciαo 2>&1 > ../output &
+    sleep 1
+    cd .. # test/
+    URL=$(cat output | grep "a browser" | awk '{print $5}')
+    TEXT=$(curl $URL)
+    [[ "$TEXT" == "Ciαo" ]]
 }
 
 teardown() {

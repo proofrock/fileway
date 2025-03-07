@@ -8,11 +8,13 @@
 
 * The uploaders generate two strings, an URL and a `curl` command;
 * Opening the URL with a browser shows a download page;
-* Opening it with a CLI app downloads the file.
+* Opening the command with a CLI app downloads the file, or shows the text.
 
 It should be pretty straightforward, but there are some details worth mentioning. Read on if you're interested.
 
 == Preserving the file name
+
+_This applies to file transfers_
 
 The download URL ends with a random string. CLI downloaders will attempt to save a file with _that_ name, and that's wrong.
 
@@ -26,7 +28,7 @@ The file name is sent in the `Content-Disposition` header.
 
 == Serving the right way
 
-Why we want an intermediate, download page when opening via browser? Please remember that the link is one time, and the uploader "exits" when the download is done. So,if you send the link over Slack or Whatsapp, the automatic preview function will make it expire. An intermediate page avoids it.
+Why we want an intermediate, download page when opening via browser? Please remember that the link is one-time, and the uploader "exits" when the download is done. So,if you send the link over Slack or Whatsapp, the automatic preview function will make it expire. An intermediate page avoids it.
 
 On the other hand, opening it with a CLI download tool should just download the file.
 
@@ -44,7 +46,7 @@ For others, you may want to use the direct link; see the next section.
 
 == Direct download link
 
-To bypass this check, replace `.../dl/...` with `.../ddl/...` ina download link.
+To bypass this check, replace `.../dl/...` with `.../ddl/...` in a download link.
 
  https://fileway.example.com/dl/I5zeoJIId1d10FAvnsJrp4q6I2f2F3v7j
 

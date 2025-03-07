@@ -15,28 +15,30 @@ package main
 
 import (
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type Conduit struct {
-	secret    string
 	Id        string
+	IsText    bool
 	Filename  string
 	Size      int64
 	ChunkPlan []int
 
 	ChunkQueue chan []byte
 
+	secret string
+
 	lastAccessed    atomic.Int64
 	downloadStarted atomic.Bool
 	latch           *Latch
 }
 
-func NewConduit(filename string, size int64, secret string) *Conduit {
+func NewConduit(isText bool, filename string, size int64, secret string) *Conduit {
 	ret := &Conduit{
 		Id:         genRandomString(idsLength),
+		IsText:     isText,
 		Filename:   filename,
 		Size:       size,
 		secret:     secret,
@@ -44,7 +46,11 @@ func NewConduit(filename string, size int64, secret string) *Conduit {
 		latch:      NewLatch(),
 	}
 
-	ret.ChunkPlan = buildChunkPlan(size)
+	if !ret.IsText {
+		ret.ChunkPlan = buildChunkPlan(size)
+	} else {
+		ret.ChunkPlan = []int{int(size)}
+	}
 
 	ret.touch()
 	return ret

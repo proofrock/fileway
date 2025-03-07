@@ -52,6 +52,9 @@ var uploadPage []byte
 //go:embed static/download.html
 var downloadPage []byte
 
+//go:embed static/download_for_txt.html
+var downloadPageForTxt []byte
+
 //go:embed static/favicon.png
 var favicon []byte
 
@@ -64,6 +67,7 @@ var buildTime string // Set at build time, var SOURCE_DATE_EPOCH
 func main() {
 	// Replaces version in the web pages and cli uploader
 	downloadPage = replace(downloadPage, "#VERSION#", version)
+	downloadPageForTxt = replace(downloadPageForTxt, "#VERSION#", version)
 	uploadPage = replace(uploadPage, "#VERSION#", version)
 	cliUploader = replace(cliUploader, "#VERSION#", version)
 
@@ -171,7 +175,7 @@ func authenticate(pwd string) bool {
 // This is the basic handler for downloads; it shows a download page
 // unless the user agent "appears" to come from a CLI application.
 // In this case, forwards control to ddl(w, r) that directly downloads
-// the file.
+// the payload.
 func dl(w http.ResponseWriter, r *http.Request) {
 	switch strings.Split(r.UserAgent(), "/")[0] {
 	case "curl", "Wget", "HTTPie", "aria2", "Axel":
@@ -183,13 +187,19 @@ func dl(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fileString := fmt.Sprintf("%s (%s)", conduit.Filename, humanReadableSize(conduit.Size))
-		dlPage := replace(downloadPage, "#FILE_INFO#", fileString)
-		serveFile(dlPage, "text/html")(w, r)
+		var _downloadPage []byte
+		if conduit.IsText {
+			_downloadPage = downloadPageForTxt
+		} else {
+			fileString := fmt.Sprintf("%s (%s)", conduit.Filename, humanReadableSize(conduit.Size))
+			_downloadPage = replace(downloadPage, "#FILE_INFO#", fileString)
+		}
+
+		serveFile(_downloadPage, "text/html")(w, r)
 	}
 }
 
-// directly download of the file
+// direct download of the payload
 func ddl(w http.ResponseWriter, r *http.Request) {
 	conduit := getConduit(&r.URL.Path)
 	if conduit == nil {
@@ -202,7 +212,14 @@ func ddl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/octet-stream")
+	var contentType string
+	if conduit.IsText {
+		contentType = "text/plain"
+	} else {
+		contentType = "application/octet-stream"
+	}
+
+	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", conduit.Filename))
 	w.Header().Set("Content-Length", strconv.FormatInt(conduit.Size, 10))
 
@@ -232,14 +249,23 @@ func ddl(w http.ResponseWriter, r *http.Request) {
 }
 
 func setup(w http.ResponseWriter, r *http.Request) {
+	qry := r.URL.Query()
+
 	passedSecret := r.Header.Get("x-fileway-secret")
+
 	if !authenticate(passedSecret) {
 		http.Error(w, "Secret Mismatch", http.StatusUnauthorized)
 		return
 	}
 
-	sizeStr := r.URL.Query().Get("size")
-	filename := r.URL.Query().Get("filename")
+	var filename string
+	sizeStr := qry.Get("size")
+	isText := qry.Get("txt") == "1"
+	if isText {
+		filename = fmt.Sprintf("fileway_%s.txt", nowString())
+	} else {
+		filename = qry.Get("filename")
+	}
 	if sizeStr == "" || filename == "" {
 		http.Error(w, "Missing required parameter", http.StatusBadRequest)
 		return
@@ -251,7 +277,7 @@ func setup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conduit := NewConduit(filename, size, passedSecret)
+	conduit := NewConduit(isText, filename, size, passedSecret)
 
 	conduitsMu.Lock()
 	conduits[conduit.Id] = conduit

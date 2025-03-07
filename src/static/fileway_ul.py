@@ -26,8 +26,72 @@ import string, sys, tempfile, time, urllib.error, urllib.request, zipfile
 # Avoid buffering (harmful when capturing stdout in tests)
 sys.stdout.reconfigure(line_buffering=True)
 
+user_agent = "FilewayUploader"
+
+def upload_txt(text, secret):
+    text = text.encode("utf-8")
+    size = len(text)
+
+    try:
+        # Setup transmission
+        setup_url = f"{BASE_URL}/setup?size={size}&txt=1"
+        setup_req = urllib.request.Request(setup_url)
+        setup_req.add_header("x-fileway-secret", secret)
+        setup_req.add_header("user-agent", user_agent)
+        
+        try:
+            with urllib.request.urlopen(setup_req, timeout=30) as response:
+                if response.status != 200:
+                    print("Error in setting up: " + response.read().decode('utf-8'))
+                    return
+                
+                conduitId = response.read().decode('utf-8')
+
+                # Output the full conduit URL
+                print("All set up! Download your text using:")
+                print(f"- a browser, from {BASE_URL}/dl/{conduitId}")
+                print(f"- a shell, with $> curl {BASE_URL}/dl/{conduitId}")
+
+                # Poll to check server availability and get chunk size
+                chunk_plan = []
+                while True:
+                    ping_url = f"{BASE_URL}/ping/{conduitId}"
+                    ping_req = urllib.request.Request(ping_url)
+                    ping_req.add_header("x-fileway-secret", secret)
+                    ping_req.add_header("user-agent", user_agent)
+                    
+                    with urllib.request.urlopen(ping_req, timeout=30) as ping_response:
+                        ping_text = ping_response.read()
+                        if ping_text:
+                            chunk_plan = json.loads(ping_text)
+                            if len(chunk_plan) > 0:
+                                break
+
+
+                # The chunk list has always 1 item for texts
+                print("Uploading the text", end="\r")
+                
+                ul_req = urllib.request.Request(
+                    f"{BASE_URL}/ul/{conduitId}", 
+                    method='PUT',
+                    data=text
+                )
+                ul_req.add_header("x-fileway-secret", secret)
+                ul_req.add_header("user-agent", user_agent)
+                
+                with urllib.request.urlopen(ul_req, timeout=30) as ul_response:
+                    if ul_response.status != 200:
+                        print("Error in uploading: " + ul_response.read().decode('utf-8'))
+                        return
+
+                print("All data sent. Bye!                     ")
+
+        except urllib.error.URLError as e:
+            print(f"URL Error: {e}")
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+    
 def upload_file(filepath, secret):
-    user_agent = "FilewayUploader"
     # Extract filename from path
     filename = os.path.basename(filepath)
     # Get file size
@@ -35,7 +99,7 @@ def upload_file(filepath, secret):
 
     try:
         # Setup transmission
-        setup_url = f"{BASE_URL}/setup?filename={urllib.parse.quote(filename)}&size={filesize}"
+        setup_url = f"{BASE_URL}/setup?filename={urllib.parse.quote(filename)}&size={filesize}&txt=0"
         setup_req = urllib.request.Request(setup_url)
         setup_req.add_header("x-fileway-secret", secret)
         setup_req.add_header("user-agent", user_agent)
@@ -172,11 +236,13 @@ def get_secret(save_to_home):
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Uploader for Fileway')
     
+    parser.add_argument('--txt', dest='is_txt', action='store_true', 
+                       help='Send a text, not a file. Incompatible with --zip.')
     parser.add_argument('--save', dest='is_save', action='store_true',
-                       help='Save the secret to user home')
+                       help='Save the secret to user home.')
     parser.add_argument('--zip', dest='is_zip', action='store_true',
-                       help='Enable zip mode')
-    parser.add_argument('files', nargs='*', help='List of files if --zip, just one if not')
+                       help='Enable zip mode. Incompatible with --txt.')
+    parser.add_argument('payloads', nargs='*', help='List of files if --zip, just one if not; a text if --txt.')
     
     parser.set_defaults(is_save=False, is_zip=False)
     return parser.parse_args()
@@ -187,42 +253,55 @@ if __name__ == "__main__":
     
     args = parse_arguments()
     
-    if len(args.files) == 0:
+    if len(args.payloads) == 0:
         print("No files specified")
         sys.exit(1)
     
     secret = get_secret(args.is_save)
     
-    file = ""
-    if args.is_zip:
+    if args.is_txt and args.is_zip:
+        print("Error: --txt and --zip are incompatible.")
+        sys.exit(1) 
+    
+    payload = ""
+    if args.is_txt:
+        payload = " ".join(args.payloads)
+    elif args.is_zip:
         print("Zipping files...")
-        file = create_temp_zip(args.files)
-        if file == None:
+        payload = create_temp_zip(args.payloads)
+        if payload == None:
             sys.exit(1)
-        print(f"Created upload file '{file}'")
+        print(f"Created upload file '{payload}'")
     else:
-        if len(args.files) > 1:
+        if len(args.payloads) > 1:
             print("To upload multiple files, specify '--zip'")
             sys.exit(1)
-        file = args.files[0]
+        payload = args.payloads[0]
     
-    # Check if file exists
-    if not os.path.exists(file):
-        print(f"Error: File '{file}' does not exist.")
-        sys.exit(1)
-    
-    # Check if it's a file (not a directory)
-    if not os.path.isfile(file):
-        print(f"Error: '{file}' is not a file.")
-        sys.exit(1)
+    if args.is_txt:
+        print("Sending secret text...")
+    else:
+        print(f"Uploading '{payload}'...")
+        # Check if file exists
+        if not os.path.exists(payload):
+            print(f"Error: File '{payload}' does not exist.")
+            sys.exit(1)
+        
+        # Check if it's a file (not a directory)
+        if not os.path.isfile(payload):
+            print(f"Error: '{payload}' is not a file.")
+            sys.exit(1)
 
-    # Check file readability
-    if not os.access(file, os.R_OK):
-        print(f"Error: Unable to read file '{file}'. Check file permissions.")
-        sys.exit(1)
+        # Check file readability
+        if not os.access(payload, os.R_OK):
+            print(f"Error: Unable to read file '{payload}'. Check file permissions.")
+            sys.exit(1)
 
     try:
-        upload_file(file, secret)
+        if args.is_txt:
+            upload_txt(payload, secret)
+        else:
+            upload_file(payload, secret)
     except KeyboardInterrupt:
         print('Interrupted')
         try:
