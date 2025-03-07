@@ -274,14 +274,14 @@ func ping(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var ret []byte
-	if conduit.IsDownloading() {
+	if conduit.latch.Wait(20 * time.Second) {
 		if _ret, err := json.Marshal(conduit.ChunkPlan); err != nil {
 			http.Error(w, "Marshaling issue", http.StatusInternalServerError)
 			return
 		} else {
 			ret = _ret
 		}
-	} else {
+	} else { // timed out
 		ret = []byte("[]")
 	}
 

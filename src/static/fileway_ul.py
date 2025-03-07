@@ -68,8 +68,6 @@ def upload_file(filepath, secret):
                             if len(chunk_plan) > 0:
                                 break
 
-                    time.sleep(1)
-
                 # Open file and upload chunks
                 with open(filepath, 'rb') as file:
                     print("", end="\r")

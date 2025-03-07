@@ -31,7 +31,7 @@ type Conduit struct {
 
 	lastAccessed    atomic.Int64
 	downloadStarted atomic.Bool
-	mu              sync.Mutex
+	latch           *Latch
 }
 
 func NewConduit(filename string, size int64, secret string) *Conduit {
@@ -41,7 +41,7 @@ func NewConduit(filename string, size int64, secret string) *Conduit {
 		Size:       size,
 		secret:     secret,
 		ChunkQueue: make(chan []byte, bufferQueueSize),
-		mu:         sync.Mutex{},
+		latch:      NewLatch(),
 	}
 
 	ret.ChunkPlan = buildChunkPlan(size)
@@ -82,15 +82,13 @@ func (c *Conduit) WasAccessedBefore(cutoffTime int64) bool {
 }
 
 func (c *Conduit) Download() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	if c.downloadStarted.Load() {
 		return ErrConduitAlreadyDownloading
 	}
 
 	c.touch()
 	c.downloadStarted.Store(true)
+	c.latch.Unlock()
 
 	return nil
 }
