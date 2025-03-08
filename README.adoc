@@ -1,4 +1,4 @@
-= 🚠 fileway v0.7.1
+= 🚠 fileway v0.8.0
 @proofrock <oss@germanorizzo.it>
 :toc:
 :sectnums:

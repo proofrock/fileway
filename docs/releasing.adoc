@@ -6,7 +6,7 @@
 
 == Update Go
 
-Check latest version of Go, and in case it change update `go.mod`.
+Check latest version of Go, and in case it changes update `go.mod`.
 
 == Update libraries
 
@@ -37,7 +37,7 @@ FROM golang@sha256:927112936d6b496ed95f55f362cc09da6e3e624ef868814c56d55bd7323e0
 
 ## Version
 
-Replace the new version string (e.g. `v0.6.2`) in the `README.md`.
+Replace the new version string (e.g. `v0.6.2`) in the `README.adoc`.
 
 ## Commit and tag
 
