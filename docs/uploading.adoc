@@ -15,7 +15,8 @@
 * The CLI interface:
 ** Pure Python 3footnote:[Python is not my "first language", so while it's simple enough, feel free to read the code and tell me if something's amiss!], no dependencies;
 ** Can zip multiple files or directories to a temporary zip, before uploading it;
-** Can save the secret to the user's home.
+** Can save the secret to the user's home;
+** You can provide/force a download link, for automation.
 
 == The Web UI
 
@@ -122,5 +123,27 @@ If `--save` is specified, the secret (obtained via env var or asking to the user
 
 [WARNING]
 ====
-The secret is obfuscated, but must still be considered as plain text.
+The secret is obfuscated, but must still be considered as sensitive; it's easy to revert the obfuscation.
 ====
+
+==== `--forced-id`: Deterministic download links
+
+Sometimes you will want to be able to predict the download link: for example to schedule an upload from a server and a download slightly later, from another server, without user intervention.
+
+The `--forced-id` switch does just this, avoiding random generation of the link:
+
+----
+$> fileway_ul.py --txt "ciao" --forced-id "my_beautiful_link"
+== Fileway v x.y.z ==
+
+Sending secret text...
+All set up! Download your text using:
+- a browser, from http://127.0.0.1:8080/dl/my_beautiful_link
+- a shell, with $> curl http://127.0.0.1:8080/dl/my_beautiful_link
+----
+
+Of course, the script will fail if the ID is already in use.
+
+==== `--print-traceback`: Print all the tracebacks
+
+When there is an error, `fileway_ul.py` prints just the error message, to avoid clutter. This switch allows to print the whole traceback, for debug and a better bug report.

@@ -98,6 +98,7 @@ func main() {
 	http.HandleFunc("/dl/", dl)   // Shows a download page, if downloader "looks like" CLI redirects to ddl
 	http.HandleFunc("/ddl/", ddl) // Direct download
 	http.HandleFunc("/setup", setup)
+	http.HandleFunc("/cleanup/", cleanup)
 	http.HandleFunc("/ping/", ping)
 	http.HandleFunc("/ul/", ul)
 	http.HandleFunc("/fileway_ul.py", serveCLIUploader)
@@ -207,32 +208,61 @@ func setup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var filename string
-	sizeStr := qry.Get("size")
 	isText := qry.Get("txt") == "1"
 	if isText {
 		filename = fmt.Sprintf("fileway_%s.txt", utils.NowString())
 	} else {
 		filename = qry.Get("filename")
 	}
-	if sizeStr == "" || filename == "" {
-		http.Error(w, "Missing required parameter", http.StatusBadRequest)
+	if filename == "" {
+		http.Error(w, "Missing required parameter 'filename' (and 'txt' != 1)", http.StatusBadRequest)
 		return
 	}
 
+	sizeStr := qry.Get("size")
+	if sizeStr == "" {
+		http.Error(w, "Missing required parameter 'size'", http.StatusBadRequest)
+		return
+	}
 	size, err := strconv.ParseInt(sizeStr, 10, 64)
 	if err != nil {
 		http.Error(w, "Non-numeric size", http.StatusBadRequest)
 		return
 	}
 
+	forcedConduitId := qry.Get("forced_id")
+
 	bqs := bufferQueueSize
 	if isText {
 		bqs = 1
 	}
 
-	conduitId := conduits.NewConduit(isText, filename, size, passedSecret, chunkSize, bqs, idsLength)
+	conduitId, err := conduits.NewConduit(forcedConduitId, isText, filename, size, passedSecret, chunkSize, bqs, idsLength)
+	if err != nil {
+		// XXX for now, this conflict is the only possible error, but
+		//     in the future the HTTP Response Code may be different
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
 
 	_, _ = w.Write([]byte(conduitId))
+}
+
+func cleanup(w http.ResponseWriter, r *http.Request) {
+	passedSecret := r.Header.Get("x-fileway-secret")
+
+	if !authenticator.Authenticate(passedSecret) {
+		http.Error(w, "Secret Mismatch", http.StatusUnauthorized)
+		return
+	}
+
+	conduit := getConduit(&r.URL.Path)
+	if conduit == nil {
+		http.Error(w, "Conduit Not Found", http.StatusNotFound)
+		return
+	}
+
+	conduits.DelConduit(conduit.Id)
 }
 
 func ping(w http.ResponseWriter, r *http.Request) {

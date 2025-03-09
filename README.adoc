@@ -24,7 +24,7 @@ It can be used to relay files (or text) from a server to another, if the two ser
 .Sequence diagram
 image::resources/seq_diagram.png[Sequence diagram]
 
-The transfer is secure: a unique link is generated, and you should only take care to serve it via HTTPS (<<DIWC,discussed below>>).
+The transfer is secure: a unique link is generated, and you should only take care to serve it via HTTPS (<<DIWC,discussed below>>). In alternative, you can provide a download link, for better automationfootnote:[This is available only via the python CLI script.].
 
 Uploads can be done with a web interface - works on mobile, too - or via a python3 script, for shells. Downloads can be done via a browser or using the commandline, e.g. `curl`. The uploading script or web session must be kept online until the transfer is done. Of course, multiple concurrent transfers are possible, and it transfers one file/text at a time.
 
@@ -32,7 +32,7 @@ Uploads can be done with a web interface - works on mobile, too - or via a pytho
 
 xref:docs/server.adoc#RAB[Builds are reproducible].
 
-== Tutorial [[TUT]]
+== At a glance/Tutorial/Demo [[TUT]]
 
 For a quick test, you can run it locally. Prerequisites are `docker`, a file to upload, nothing else.
 
@@ -56,7 +56,7 @@ In the two boxes that will be displayed, you'll find an URL to be open directly 
 
 [NOTE]
 ====
-You can use anything to download a file URL, as long as it supports taking the filename from the `Content-Disposition` header. That's the `-J` switch for `curl` and the `--content-disposition` one for `wget` (still marked experimental).
+You can use any tool to download a file URL, as long as it supports taking the filename from the `Content-Disposition` header. That's the `-J` switch for `curl` and the `--content-disposition` one for `wget` (still marked experimental).
 ====
 
 == Documentation

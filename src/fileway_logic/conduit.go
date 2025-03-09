@@ -18,7 +18,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/proofrock/fileway/utils"
 	"github.com/proofrock/fileway/utils/latch"
 )
 
@@ -50,14 +49,15 @@ type Conduit struct {
 
 // Creates a new Conduit instance
 func newConduit(
+	id string,
 	isText bool,
 	filename string,
 	size int64,
 	secret string,
-	chunkSize, bufferQueueSize, idsLength int,
+	chunkSize, bufferQueueSize int,
 ) *Conduit {
 	ret := &Conduit{
-		Id:         utils.GenRandomString(idsLength),
+		Id:         id,
 		IsText:     isText,
 		Filename:   filename,
 		Size:       size,

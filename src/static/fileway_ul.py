@@ -20,21 +20,25 @@ BASE_URL = "#BASE_URL#"
 ### Don't modify from here ###
  ############################
 
-import argparse, atexit, getpass, json, os, pathlib, random, stat
-import string, sys, tempfile, time, urllib.error, urllib.request, zipfile
+import argparse, atexit, getpass, json, os, pathlib, random, stat, string
+import sys, tempfile, time, traceback, urllib.error, urllib.request, zipfile
 
 # Avoid buffering (harmful when capturing stdout in tests)
 sys.stdout.reconfigure(line_buffering=True)
 
 user_agent = "FilewayUploader"
 
-def upload_txt(text, secret):
+current_conduit_id = None
+
+def upload_txt(text, secret, print_traceback, forced_id):
     text = text.encode("utf-8")
     size = len(text)
 
     try:
         # Setup transmission
         setup_url = f"{BASE_URL}/setup?size={size}&txt=1"
+        if forced_id != None and forced_id != '':
+            setup_url += f"&forced_id={urllib.parse.quote(forced_id)}"
         setup_req = urllib.request.Request(setup_url)
         setup_req.add_header("x-fileway-secret", secret)
         setup_req.add_header("user-agent", user_agent)
@@ -45,17 +49,18 @@ def upload_txt(text, secret):
                     print("Error in setting up: " + response.read().decode('utf-8'))
                     return
                 
-                conduitId = response.read().decode('utf-8')
+                global current_conduit_id
+                current_conduit_id = response.read().decode('utf-8')
 
                 # Output the full conduit URL
                 print("All set up! Download your text using:")
-                print(f"- a browser, from {BASE_URL}/dl/{conduitId}")
-                print(f"- a shell, with $> curl {BASE_URL}/dl/{conduitId}")
+                print(f"- a browser, from {BASE_URL}/dl/{current_conduit_id}")
+                print(f"- a shell, with $> curl {BASE_URL}/dl/{current_conduit_id}")
 
                 # Poll to check server availability and get chunk size
                 chunk_plan = []
                 while True:
-                    ping_url = f"{BASE_URL}/ping/{conduitId}"
+                    ping_url = f"{BASE_URL}/ping/{current_conduit_id}"
                     ping_req = urllib.request.Request(ping_url)
                     ping_req.add_header("x-fileway-secret", secret)
                     ping_req.add_header("user-agent", user_agent)
@@ -72,7 +77,7 @@ def upload_txt(text, secret):
                 print("Uploading the text", end="\r")
                 
                 ul_req = urllib.request.Request(
-                    f"{BASE_URL}/ul/{conduitId}", 
+                    f"{BASE_URL}/ul/{current_conduit_id}", 
                     method='PUT',
                     data=text
                 )
@@ -89,9 +94,12 @@ def upload_txt(text, secret):
         except urllib.error.URLError as e:
             print(f"URL Error: {e}")
     except Exception as e:
-        print(f"Unexpected error: {e}")
+        if print_traceback:
+            traceback.print_exc()
+        else:
+            print(f"Unexpected error: {e}")
     
-def upload_file(filepath, secret):
+def upload_file(filepath, secret, print_traceback, forced_id):
     # Extract filename from path
     filename = os.path.basename(filepath)
     # Get file size
@@ -100,6 +108,8 @@ def upload_file(filepath, secret):
     try:
         # Setup transmission
         setup_url = f"{BASE_URL}/setup?filename={urllib.parse.quote(filename)}&size={filesize}&txt=0"
+        if forced_id != None and forced_id != '':
+            setup_url += f"&forced_id={urllib.parse.quote(forced_id)}"
         setup_req = urllib.request.Request(setup_url)
         setup_req.add_header("x-fileway-secret", secret)
         setup_req.add_header("user-agent", user_agent)
@@ -110,17 +120,18 @@ def upload_file(filepath, secret):
                     print("Error in setting up: " + response.read().decode('utf-8'))
                     return
                 
-                conduitId = response.read().decode('utf-8')
+                global current_conduit_id
+                current_conduit_id = response.read().decode('utf-8')
 
                 # Output the full conduit URL
                 print("All set up! Download your file using:")
-                print(f"- a browser, from {BASE_URL}/dl/{conduitId}")
-                print(f"- a shell, with $> curl -OJ {BASE_URL}/dl/{conduitId}")
+                print(f"- a browser, from {BASE_URL}/dl/{current_conduit_id}")
+                print(f"- a shell, with $> curl -OJ {BASE_URL}/dl/{current_conduit_id}")
 
                 # Poll to check server availability and get chunk size
                 chunk_plan = []
                 while True:
-                    ping_url = f"{BASE_URL}/ping/{conduitId}"
+                    ping_url = f"{BASE_URL}/ping/{current_conduit_id}"
                     ping_req = urllib.request.Request(ping_url)
                     ping_req.add_header("x-fileway-secret", secret)
                     ping_req.add_header("user-agent", user_agent)
@@ -145,7 +156,7 @@ def upload_file(filepath, secret):
 
                         # Send chunk
                         ul_req = urllib.request.Request(
-                            f"{BASE_URL}/ul/{conduitId}", 
+                            f"{BASE_URL}/ul/{current_conduit_id}", 
                             method='PUT',
                             data=chunk
                         )
@@ -162,7 +173,29 @@ def upload_file(filepath, secret):
         except urllib.error.URLError as e:
             print(f"URL Error: {e}")
     except Exception as e:
-        print(f"Unexpected error: {e}")
+        if print_traceback:
+            traceback.print_exc()
+        else:
+            print(f"Unexpected error: {e}")
+
+def cleanup(conduit_id, secret, print_traceback):
+    try:
+        cleanup_url = f"{BASE_URL}/cleanup/{conduit_id}"
+        cleanup_req = urllib.request.Request(cleanup_url)
+        cleanup_req.add_header("x-fileway-secret", secret)
+        cleanup_req.add_header("user-agent", user_agent)
+        
+        with urllib.request.urlopen(cleanup_req, timeout=30) as response:
+            if response.status != 200:
+                print("Error in cleaning up: " + response.read().decode('utf-8'))
+            else:
+                print("Ok")
+
+    except Exception as e:
+        if print_traceback:
+            traceback.print_exc()
+        else:
+            print(f"Unexpected error: {e}")
 
 def create_temp_zip(paths_list):
     try:
@@ -242,6 +275,10 @@ def parse_arguments():
                        help='Save the secret to user home.')
     parser.add_argument('--zip', dest='is_zip', action='store_true',
                        help='Enable zip mode. Incompatible with --txt.')
+    parser.add_argument('--forced-id', dest='forced_id',
+                       help='Send a text. Incompatible with --zip.')
+    parser.add_argument('--print-traceback', dest='print_traceback', action='store_true', 
+                       help='On exceptions, print the traceback.')
     parser.add_argument('payloads', nargs='*', help='List of files if --zip, just one if not; a text if --txt.')
     
     parser.set_defaults(is_save=False, is_zip=False)
@@ -299,11 +336,14 @@ if __name__ == "__main__":
 
     try:
         if args.is_txt:
-            upload_txt(payload, secret)
+            upload_txt(payload, secret, args.print_traceback, args.forced_id)
         else:
-            upload_file(payload, secret)
+            upload_file(payload, secret, args.print_traceback, args.forced_id)
     except KeyboardInterrupt:
-        print('Interrupted')
+        print('Interrupted.')
+        if current_conduit_id != None:
+            print('Attempting to cleanup...')
+            cleanup(current_conduit_id, secret, args.print_traceback)
         try:
             sys.exit(130)
         except SystemExit:

@@ -24,7 +24,7 @@ dld_python_script() {
     ls test/fileway_ul.py
 }
 
-@test "Python upload (simple)" {
+@test "Python upload (file)" {
     dld_python_script
     cd test/src
     FILEWAY_PASSWORD="mysecret" ../fileway_ul.py rnd1.bin 2>&1 > ../output &
@@ -70,7 +70,6 @@ wait_for_grep_in_file() {
     [[ "$HASH1" == "$HASH2" ]]
 }
 
-
 @test "Python upload (text)" {
     dld_python_script
     cd test/src
@@ -82,10 +81,33 @@ wait_for_grep_in_file() {
     [[ "$TEXT" == "Ciαo" ]]
 }
 
+@test "Python upload with forced ID (file)" {
+    dld_python_script
+    cd test/src
+    FILEWAY_PASSWORD="mysecret" ../fileway_ul.py rnd2.bin --forced-id "abcd" 2>&1 > ../output &
+    sleep 1
+    cd .. # test/
+    rm -f *.bin # It shouldn't be necessary, but teardown() doesn't seem to work
+    curl -OJ http://localhost:8080/dl/abcd
+    HASH1=$(cd src/ && md5sum rnd2.bin)
+    HASH2=$(md5sum rnd2.bin)
+    [[ "$HASH1" == "$HASH2" ]]
+}
+
+@test "Python upload with forced ID (text)" {
+    dld_python_script
+    cd test/src
+    FILEWAY_PASSWORD="mysecret" ../fileway_ul.py --txt Ciαo --forced-id "abcd" 2>&1 > ../output &
+    sleep 1
+    cd .. # test/
+    TEXT=$(curl http://localhost:8080/dl/abcd)
+    [[ "$TEXT" == "Ciαo" ]]
+}
+
 teardown() {
     killall curl || true
     pkill -9 -f fileway_ul.py || true
-    rm -f test/output test/*.bin
+    rm -f test/output test/rnd1.bin test/rnd2.bin
 }
 
 teardown_file() {

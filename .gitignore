@@ -4,6 +4,7 @@ bin/
 test/*
 !test/test.sh
 src/reproducible_build.sh
+/fileway_ul.py
 
 # Created by https://www.toptal.com/developers/gitignore/api/intellij+all,go
 # Edit at https://www.toptal.com/developers/gitignore?templates=intellij+all,go

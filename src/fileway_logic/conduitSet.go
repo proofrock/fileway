@@ -17,6 +17,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/proofrock/fileway/utils"
 )
 
 const (
@@ -26,6 +28,10 @@ const (
 type ConduitSet struct {
 	conduits map[string]*Conduit
 	mu       sync.RWMutex
+}
+
+func (cs *ConduitSet) cleanup(id string) {
+	panic("unimplemented")
 }
 
 func NewConduitSet() *ConduitSet {
@@ -62,19 +68,41 @@ func (cs *ConduitSet) cleanupStaleConduits() {
 	}
 }
 
-func (cs *ConduitSet) NewConduit(isText bool,
+func (cs *ConduitSet) NewConduit(
+	forcedId string,
+	isText bool,
 	filename string,
 	size int64,
 	secret string,
-	chunkSize, bufferQueueSize, idsLength int) string {
-	// Create a new Conduit instance
-	conduit := newConduit(isText, filename, size, secret, chunkSize, bufferQueueSize, idsLength)
+	chunkSize, bufferQueueSize, idsLength int,
+) (string, error) {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
+	// an id can be provided, and if it's not, it's random
+	var id string
+	if forcedId != "" {
+		// check if the forced id already exists
+		if _, exists := cs.conduits[forcedId]; exists {
+			return "", fmt.Errorf("conduit with id %s already exists", forcedId)
+		}
+		id = forcedId
+	} else {
+		// generate a random id that doesn't already exist
+		for {
+			id = utils.GenRandomString(idsLength)
+			if _, exists := cs.conduits[id]; !exists {
+				break
+			}
+		}
+	}
+
+	// Create a new Conduit instance
+	conduit := newConduit(id, isText, filename, size, secret, chunkSize, bufferQueueSize)
+
 	cs.conduits[conduit.Id] = conduit
 
-	return conduit.Id
+	return id, nil
 }
 
 func (cs *ConduitSet) GetConduit(conduitId string) *Conduit {
