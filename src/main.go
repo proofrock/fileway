@@ -55,7 +55,7 @@ var version string   // Set at build time, var VERSION
 var buildTime string // Set at build time, var SOURCE_DATE_EPOCH
 
 var authenticator *auth.Auth
-var conduits = fw.NewConduitSet()
+var conduits *fw.ConduitSet
 
 func main() {
 	// Replaces version in the web pages and cli uploader
@@ -81,17 +81,22 @@ func main() {
 		return
 	}
 
-	env := os.Getenv("FILEWAY_SECRET_HASHES")
-	if env == "" {
+	secretHashes := os.Getenv("FILEWAY_SECRET_HASHES")
+	if secretHashes == "" {
 		log.Fatal("FATAL: missing environment variable FILEWAY_SECRET_HASHES")
 	}
 
-	authenticator = auth.NewAuth(env)
+	authenticator = auth.NewAuth(secretHashes)
+
+	uploadTimeout := utils.GetIntEnv("UPLOAD_TIMEOUT_SECS", 240)
+
+	conduits = fw.NewConduitSet(uploadTimeout)
 
 	fmt.Println("Parameters:")
-	fmt.Printf("- Chunk size (Kb): %d\n", chunkSize)
-	fmt.Printf("- Internal chunk queue size: %d Kb\n", bufferQueueSize)
-	fmt.Printf("- Random IDs length: %d\n", idsLength)
+	fmt.Printf("- Chunk size: %d Kb\n", chunkSize/1024)
+	fmt.Printf("- Internal chunk queue size: %d\n", bufferQueueSize)
+	fmt.Printf("- Random IDs length: %d chars\n", idsLength)
+	fmt.Printf("- Upload timeout: %d secs\n", uploadTimeout)
 	fmt.Println()
 
 	// Routes
