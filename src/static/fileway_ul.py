@@ -237,7 +237,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Uploader for Fileway')
     
     parser.add_argument('--txt', dest='is_txt', action='store_true', 
-                       help='Send a text, not a file. Incompatible with --zip.')
+                       help='Send a text. Incompatible with --zip.')
     parser.add_argument('--save', dest='is_save', action='store_true',
                        help='Save the secret to user home.')
     parser.add_argument('--zip', dest='is_zip', action='store_true',

@@ -10,7 +10,7 @@ Fileway is a real-time file transfer service that works through a web browser or
 
 [NOTE]
 ====
-While it's called _file_-way, it can also transfer text secrets!
+While it's called _file_-way, it can also transfer text; useful for config snippets or similar.
 ====
 
 You can jump in following the xref:#TUT[tutorial] or read on for an architectural overview.

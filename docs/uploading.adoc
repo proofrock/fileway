@@ -26,7 +26,7 @@ Something like this should be shown:
 .A screenshot of the Web UI
 image::../resources/webui.png[A screenshot of the Web UI]
 
-Simply provide the secret, and either choose a file or input a secret text to share. And push "Upload".
+Simply provide the secret, and either choose a file or input a text to share. Then click "Upload".
 
 == The CLI script
 
@@ -76,7 +76,7 @@ Keep the script open until the upload is done. It exits automatically when it's 
 
 ==== For text
 
-If you want to share a secret text, use the `--txt` commandline arguments, with a text as the other argument.
+If you want to share a text, use the `--txt` commandline arguments, with the text as the other argument.
 
 === Advanced usage
 
