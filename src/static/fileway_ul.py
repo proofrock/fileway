@@ -119,45 +119,54 @@ def upload_file(filepath, secret):
 
                 # Poll to check server availability and get chunk size
                 chunk_plan = []
-                while True:
-                    ping_url = f"{BASE_URL}/ping/{conduitId}"
-                    ping_req = urllib.request.Request(ping_url)
-                    ping_req.add_header("x-fileway-secret", secret)
-                    ping_req.add_header("user-agent", user_agent)
-                    
-                    with urllib.request.urlopen(ping_req, timeout=30) as ping_response:
-                        ping_text = ping_response.read()
-                        if ping_text:
-                            chunk_plan = json.loads(ping_text)
-                            if len(chunk_plan) > 0:
+                accessed_at_least_once = False
+                try:
+                    while True:
+                        ping_url = f"{BASE_URL}/ping/{conduitId}"
+                        ping_req = urllib.request.Request(ping_url)
+                        ping_req.add_header("x-fileway-secret", secret)
+                        ping_req.add_header("user-agent", user_agent)
+                        
+                        with urllib.request.urlopen(ping_req, timeout=30) as ping_response:
+                            accessed_at_least_once = True
+                            ping_text = ping_response.read()
+                            if ping_text:
+                                chunk_plan = json.loads(ping_text)
+                                if len(chunk_plan) > 0:
+                                    break
+
+                    # Open file and upload chunks
+                    with open(filepath, 'rb') as file:
+                        print("", end="\r")
+                        for lap, chunk_size in enumerate(chunk_plan):
+                            perc = round(lap*100/len(chunk_plan), 1)
+                            print(f"Uploading chunk {lap+1}/{len(chunk_plan)}: {perc}%", end="\r")
+
+                            chunk = file.read(chunk_size)
+                            if len(chunk) == 0:
                                 break
 
-                # Open file and upload chunks
-                with open(filepath, 'rb') as file:
-                    print("", end="\r")
-                    for lap, chunk_size in enumerate(chunk_plan):
-                        perc = round(lap*100/len(chunk_plan), 1)
-                        print(f"Uploading chunk {lap+1}/{len(chunk_plan)}: {perc}%", end="\r")
+                            # Send chunk
+                            ul_req = urllib.request.Request(
+                                f"{BASE_URL}/ul/{conduitId}", 
+                                method='PUT',
+                                data=chunk
+                            )
+                            ul_req.add_header("x-fileway-secret", secret)
+                            ul_req.add_header("user-agent", user_agent)
+                            
+                            with urllib.request.urlopen(ul_req, timeout=30) as ul_response:
+                                if ul_response.status != 200:
+                                    print("Error in uploading: " + ul_response.read().decode('utf-8'))
+                                    return
 
-                        chunk = file.read(chunk_size)
-                        if len(chunk) == 0:
-                            break
-
-                        # Send chunk
-                        ul_req = urllib.request.Request(
-                            f"{BASE_URL}/ul/{conduitId}", 
-                            method='PUT',
-                            data=chunk
-                        )
-                        ul_req.add_header("x-fileway-secret", secret)
-                        ul_req.add_header("user-agent", user_agent)
-                        
-                        with urllib.request.urlopen(ul_req, timeout=30) as ul_response:
-                            if ul_response.status != 200:
-                                print("Error in uploading: " + ul_response.read().decode('utf-8'))
-                                return
-
-                print("All data sent. Bye!                     ")
+                    print("All data sent. Bye!                     ")
+                except urllib.error.URLError as e:
+                    if e.reason == "Not Found":
+                        print("ERROR: upload timed out.                ")
+                        sys.exit(1)
+                    else:
+                        raise e
 
         except urllib.error.URLError as e:
             print(f"URL Error: {e}")

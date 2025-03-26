@@ -19,24 +19,24 @@ import (
 	"time"
 )
 
-const (
-	expiryMillis = 4 * 60 * 1000 // cleanup unused/stale sessions, not accessed for > 4 minutes
-)
-
 type ConduitSet struct {
-	conduits map[string]*Conduit
-	mu       sync.RWMutex
+	conduits     map[string]*Conduit
+	expiryMillis int64
+	mu           sync.RWMutex
 }
 
-func NewConduitSet() *ConduitSet {
+func NewConduitSet(
+	expirySeconds int,
+) *ConduitSet {
 	// Create a new ConduitSet instance
 	ret := &ConduitSet{
-		conduits: make(map[string]*Conduit),
+		conduits:     make(map[string]*Conduit),
+		expiryMillis: int64(expirySeconds) * 1000,
 	}
 
 	// Setup periodic cleanup
 	go func() {
-		ticker := time.NewTicker(1 * time.Minute)
+		ticker := time.NewTicker(10 * time.Second)
 		for range ticker.C {
 			ret.cleanupStaleConduits()
 		}
@@ -49,12 +49,13 @@ func (cs *ConduitSet) cleanupStaleConduits() {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
-	cutoffTime := time.Now().UnixMilli() - expiryMillis
+	cutoffTime := time.Now().UnixMilli() - cs.expiryMillis
 	i := 0
 	for id, conduit := range cs.conduits {
-		if conduit.WasAccessedBefore(cutoffTime) {
+		if !conduit.WasAccessedAfter(cutoffTime) {
 			i++
 			delete(cs.conduits, id)
+			conduit.Latch.Unlock() // Unlock the latch, so that any waiting upload can fail
 		}
 	}
 	if i > 0 {

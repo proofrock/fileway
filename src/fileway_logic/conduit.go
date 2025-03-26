@@ -106,8 +106,8 @@ func (c *Conduit) touch() {
 }
 
 // WasAccessedBefore checks if the lastAccessed timestamp is before the provided cutoff time
-func (c *Conduit) WasAccessedBefore(cutoffTime int64) bool {
-	return c.lastAccessed.Load() < cutoffTime
+func (c *Conduit) WasAccessedAfter(cutoffTime int64) bool {
+	return c.lastAccessed.Load() > cutoffTime
 }
 
 // Download starts the download process
