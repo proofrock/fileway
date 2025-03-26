@@ -12,6 +12,7 @@
 ** Is simple but "just enough";
 ** Can upload single files;
 ** Single page written in HTML5 and Javascript;
+** Can show a QR code for easier download from mobile devices;
 * The CLI interface:
 ** Pure Python 3footnote:[Python is not my "first language", so while it's simple enough, feel free to read the code and tell me if something's amiss!], no dependencies;
 ** Can zip multiple files or directories to a temporary zip, before uploading it;
