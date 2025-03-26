@@ -27,7 +27,7 @@ dld_python_script() {
 @test "Python upload (simple)" {
     dld_python_script
     cd test/src
-    FILEWAY_PASSWORD="mysecret" ../fileway_ul.py rnd1.bin 2>&1 > ../output &
+    FILEWAY_SECRET="mysecret" ../fileway_ul.py rnd1.bin 2>&1 > ../output &
     sleep 1
     cd .. # test/
     URL=$(cat output | grep "a browser" | awk '{print $5}')
@@ -55,7 +55,7 @@ wait_for_grep_in_file() {
 @test "Python upload (zip)" {
     dld_python_script
     cd test/src
-    bash -c "FILEWAY_PASSWORD='mysecret' ../fileway_ul.py --zip rnd1.bin rnd2.bin 2>&1 > ../output" &
+    bash -c "FILEWAY_SECRET='mysecret' ../fileway_ul.py --zip rnd1.bin rnd2.bin 2>&1 > ../output" &
     wait_for_grep_in_file ../output browser 15
     sleep 1
     cd .. # test/
@@ -74,7 +74,7 @@ wait_for_grep_in_file() {
 @test "Python upload (text)" {
     dld_python_script
     cd test/src
-    FILEWAY_PASSWORD="mysecret" ../fileway_ul.py --txt Ciαo 2>&1 > ../output &
+    FILEWAY_SECRET="mysecret" ../fileway_ul.py --txt Ciαo 2>&1 > ../output &
     sleep 1
     cd .. # test/
     URL=$(cat output | grep "a browser" | awk '{print $5}')

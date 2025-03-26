@@ -211,7 +211,11 @@ def deobfuscate(text: str) -> str:
     return ''.join(chr(ord(c) ^ 17) for c in text)
 
 def get_secret(save_to_home):
+    if "FILEWAY_SECRET" in os.environ:
+        return os.getenv('FILEWAY_SECRET')
+    
     if "FILEWAY_PASSWORD" in os.environ:
+        print("'FILEWAY_PASSWORD' environment variable is deprecated, use 'FILEWAY_SECRET' instead.")
         return os.getenv('FILEWAY_PASSWORD')
     
     creds_file = pathlib.Path.home() / '.fileway-creds'
