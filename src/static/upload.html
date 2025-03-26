@@ -92,17 +92,22 @@
             <label class="form-label">Download URL:</label>
             <div class="input-group mb-2">
                 <input type="text" id="downloadUrl" class="form-control" readonly>
+                <button id="shareBtn" class="btn btn-outline-secondary" onclick="share()" title="Share">
+                    <i class="bi bi-share-fill"></i>
+                </button>
                 <button class="btn btn-outline-secondary" onclick="showQrCode()" title="Show QR Code">
                     <i class="bi bi-qr-code-scan"></i>
                 </button>
-                <button class="btn btn-outline-secondary" onclick="copyToClipboard('downloadUrl')" title="Copy to Clipboard">
+                <button class="btn btn-outline-secondary" onclick="copyToClipboard('downloadUrl')"
+                    title="Copy to Clipboard">
                     <i class="bi bi-copy"></i>
                 </button>
             </div>
             <label class="form-label">Curl Command:</label>
             <div class="input-group">
                 <input type="text" id="curlCommand" class="form-control" readonly>
-                <button class="btn btn-outline-secondary" onclick="copyToClipboard('curlCommand')" title="Copy to Clipboard">
+                <button class="btn btn-outline-secondary" onclick="copyToClipboard('curlCommand')"
+                    title="Copy to Clipboard">
                     <i class="bi bi-copy"></i>
                 </button>
             </div>
@@ -112,14 +117,12 @@
                 <a href="/fileway_ul.py" target="_blank" class="text-decoration-none">download CLI uploader</a>
             </em></div>
     </div>
-    
     <div id="qrPopup">
         <h5>Scan QR Code</h5>
         <canvas id="qrCanvas"></canvas>
         <br>
         <button class="btn btn-primary btn-sm mt-2" onclick="closeQrPopup()">Close</button>
     </div>
-    
     <script>
         // Add event listeners for radio buttons to toggle input visibility
         document.getElementById('fileUpload').addEventListener('change', function () {
@@ -131,6 +134,8 @@
             document.getElementById('fileInputContainer').style.display = 'none';
             document.getElementById('textInputContainer').style.display = 'block';
         });
+
+        document.getElementById('shareBtn').style.display = !!navigator.share ? 'block' : 'none';
 
         async function uploadFile() {
             const baseUrl = `${window.location.protocol}//${window.location.host}`;
@@ -260,6 +265,21 @@
 
         function closeQrPopup() {
             document.getElementById('qrPopup').style.display = 'none';
+        }
+
+        async function share() {
+            const url = document.getElementById('downloadUrl').value;
+            if (!url) return;
+            try {
+                await navigator.share({
+                    title: "Fileway",
+                    text: "Here's a link for you:",
+                    url: url
+                });
+                console.log("Shared successfully");
+            } catch (error) {
+                console.error("Error sharing:", error);
+            }
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
