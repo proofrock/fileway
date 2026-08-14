@@ -1,7 +1,8 @@
+# Builds the binary in the current dir
 # docker build --build-arg VERSION=<version> --build-arg SOURCE_DATE_EPOCH=<epoch> --output=. -f Dockerfile.binary .
 
-# golang:1.24.1
-FROM golang@sha256:52ff1b35ff8de185bf9fd26c70077190cd0bed1e9f16a2d498ce907e5c421268 AS build
+# golang:1.26.6-trixie pinned for reproducible builds
+FROM golang@sha256:ab563819a16cfe5faff0f96a8bb598fbb0e400ab2ac751996e60abcb23b106a3 AS build
 
 WORKDIR /go/src/app
 COPY src/ .
