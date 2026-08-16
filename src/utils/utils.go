@@ -24,6 +24,7 @@ import (
 )
 
 const alphabet string = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+const suffixes string = "KMGTPE"
 
 // Generates a random string of the given length using [A-Za-z0-9] characters
 func GenRandomString(length int) string {
@@ -67,7 +68,10 @@ func HumanReadableSize(bytes int64) string {
 		exp++
 	}
 
-	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGT"[exp])
+	if exp >= len(suffixes) {
+		exp = len(suffixes) - 1
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), suffixes[exp])
 }
 
 // Returns the current time in the format "yyyyMMdd_HHmmss"
