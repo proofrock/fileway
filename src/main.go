@@ -17,8 +17,10 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"strconv"
@@ -121,16 +123,22 @@ func main() {
 	http.HandleFunc("/ul/", ul)
 	http.HandleFunc("/fileway_ul.py", serveCLIUploader)
 	http.HandleFunc("/favicon.png", serveFile(favicon, "image/png"))
-	http.HandleFunc("/", serveFile(uploadPage, "text/html"))
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		serveFile(uploadPage, "text/html")(w, r)
+	})
 
 	addr := fmt.Sprintf(":%d", port)
 	log.Printf("Starting server on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
 
-func serveFile(file []byte, mime string) func(http.ResponseWriter, *http.Request) {
+func serveFile(file []byte, contentType string) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", mime)
+		w.Header().Set("Content-Type", contentType)
 		w.Write(file)
 	}
 }
@@ -161,7 +169,7 @@ func dl(w http.ResponseWriter, r *http.Request) {
 		if conduit.IsText {
 			_downloadPage = downloadPageForTxt
 		} else {
-			fileString := fmt.Sprintf("%s (%s)", conduit.Filename, utils.HumanReadableSize(conduit.Size))
+			fileString := fmt.Sprintf("%s (%s)", html.EscapeString(conduit.Filename), utils.HumanReadableSize(conduit.Size))
 			_downloadPage = utils.Replace(downloadPage, "#FILE_INFO#", fileString)
 		}
 
@@ -190,7 +198,7 @@ func ddl(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", conduit.Filename))
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": conduit.Filename}))
 	w.Header().Set("Content-Length", strconv.FormatInt(conduit.Size, 10))
 
 	transferred := int64(0)
@@ -203,7 +211,6 @@ func ddl(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write(chunk)
 		if err != nil {
 			log.Printf("Error writing chunk: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
 			break
 		}
 

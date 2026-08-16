@@ -73,11 +73,7 @@ func TestDownloadRace(t *testing.T) {
 		wg.Wait()
 
 		if admitted != 1 {
-<<<<<<< HEAD
 			t.Fatalf("round %d: %d goroutines passed Download(), I want exactly 1", round, admitted)
-=======
-			t.Fatalf("round %d: %d goroutines passed Download(), want exactly 1", round, admitted)
->>>>>>> 84dd90d72a50a5fbb5d4c4b439d5dc2c0384e6a3
 		}
 	}
 }
