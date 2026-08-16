@@ -85,6 +85,15 @@ func main() {
 	if secretHashes == "" {
 		log.Fatal("FATAL: missing environment variable FILEWAY_SECRET_HASHES")
 	}
+	if idsLength <= 0 {
+		log.Fatal("FATAL: RANDOM_IDS_LENGTH must be > 0")
+	}
+	if chunkSize <= 0 {
+		log.Fatal("FATAL: CHUNK_SIZE_KB must be > 0")
+	}
+	if bufferQueueSize <= 0 {
+		log.Fatal("FATAL: BUFFER_QUEUE_SIZE must be > 0")
+	}
 
 	authenticator = auth.NewAuth(secretHashes)
 

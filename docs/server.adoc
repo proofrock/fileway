@@ -98,6 +98,13 @@ The following are the environment variables that you can set to configure `filew
 | `REPRODUCIBLE_BUILD_INFO` | *Not set* | If set, prints info for xref:#RAB[reproducing a build] and exits.
 |===
 
+[NOTE]
+====
+The numeric variables must all be greater than zero and valid numbers; the server refuses to start otherwise.
+
+Leave one unset (or empty) to get its defaut.
+====
+
 == Reverse proxy
 
 As said, `fileway` doesn't provide HTTPS, it's not its role. It's possible and easy to configure a reverse proxy to provide HTTPS.

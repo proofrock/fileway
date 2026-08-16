@@ -16,6 +16,7 @@ package utils
 import (
 	"crypto/rand"
 	"fmt"
+	"log"
 	"math/big"
 	"os"
 	"strconv"
@@ -36,16 +37,19 @@ func GenRandomString(length int) string {
 	return string(result)
 }
 
-// Returns the value of the given environment variable as an integer,
-// or the default value if the variable is not set or is invalid
+// Returns the value of the given environment variable as an integer, or the
+// default value if the variable is unset or empty. A value that is set but not
+// a number is fatal.
 func GetIntEnv(name string, deflt int) int {
-	if val, isthere := os.LookupEnv(name); !isthere || val == "" {
+	val, isthere := os.LookupEnv(name)
+	if !isthere || val == "" {
 		return deflt
-	} else if ret, err := strconv.Atoi(val); err != nil {
-		return deflt
-	} else {
-		return ret
 	}
+	ret, err := strconv.Atoi(val)
+	if err != nil {
+		log.Fatalf("FATAL: %s must be an integer, got %q", name, val)
+	}
+	return ret
 }
 
 // Replaces all occurrences of the given string in the byte slice

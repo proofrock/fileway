@@ -13,7 +13,10 @@
 
 package utils
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func TestHumanReadableSize(t *testing.T) {
 	cases := []struct {
@@ -36,5 +39,30 @@ func TestHumanReadableSize(t *testing.T) {
 		if got != c.want {
 			t.Errorf("HumanReadableSize(%d) = %q, I want %q", c.input, got, c.want)
 		}
+	}
+}
+
+func TestGetIntEnv(t *testing.T) {
+	const name = "FILEWAY_TEST_INT"
+
+	os.Unsetenv(name)
+	if got := GetIntEnv(name, 42); got != 42 {
+		t.Errorf("unset -> %d, I want the default 42", got)
+	}
+
+	os.Setenv(name, "")
+	defer os.Unsetenv(name)
+	if got := GetIntEnv(name, 42); got != 42 {
+		t.Errorf("empty -> %d, I want the default 42", got)
+	}
+
+	os.Setenv(name, "7")
+	if got := GetIntEnv(name, 42); got != 7 {
+		t.Errorf(`"7" -> %d, I want 7`, got)
+	}
+
+	os.Setenv(name, "-3")
+	if got := GetIntEnv(name, 42); got != -3 {
+		t.Errorf(`"-3" -> %d, I want -3 (range is the caller's business)`, got)
 	}
 }
