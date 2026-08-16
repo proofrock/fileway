@@ -115,7 +115,14 @@ Additionally, `PORT` must be between 1 and 65535.
 * `fileway-caddy` additionally has `caddy` proxying to `http://localhost:8080` internally, so setting `PORT` there breaks the image.
 
 The "docker way" is to remap the published port instead — `-p 9000:8080` — and leave `PORT` as it is.
-====
+
+=== Transfer size limit [[TSL]]
+
+A single transfer is capped at **4 TiB**. A larger `size` is rejected at setup time with `400 Bad Request`.
+
+The cap exists because the server plans the chunks of a transfer up front, so the declared size — which comes from the client, before a single byte is sent — determines how much memory that plan takes. 4 TiB is far beyond any realistic use of `fileway` and costs about 24 MB for the plan, which is negligible; without a cap, a client could name an arbitrary size and exhaust the server's memory without uploading anything.
+
+A zero-length payload is rejected because there is nothing to hand to the downloader, so the transfer could only hang.
 
 == Reverse proxy
 

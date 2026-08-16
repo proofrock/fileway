@@ -216,6 +216,8 @@ func ddl(w http.ResponseWriter, r *http.Request) {
 	conduits.DelConduit(conduit.Id)
 }
 
+const maxSizeBytes = 4 * 1024 * 1024 * 1024 * 1024 // 4 TiB
+
 func setup(w http.ResponseWriter, r *http.Request) {
 	qry := r.URL.Query()
 
@@ -242,6 +244,11 @@ func setup(w http.ResponseWriter, r *http.Request) {
 	size, err := strconv.ParseInt(sizeStr, 10, 64)
 	if err != nil {
 		http.Error(w, "Non-numeric size", http.StatusBadRequest)
+		return
+	}
+
+	if size <= 0 || size > maxSizeBytes {
+		http.Error(w, "Invalid size: must be between 1 byte and 4 TiB", http.StatusBadRequest)
 		return
 	}
 
