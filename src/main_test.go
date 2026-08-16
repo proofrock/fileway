@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/proofrock/fileway/auth"
@@ -56,5 +57,22 @@ func TestSetupRejectsInvalidSizes(t *testing.T) {
 		if w.Code != c.want {
 			t.Errorf("size=%s -> HTTP %d, want %d", c.size, w.Code, c.want)
 		}
+	}
+}
+
+// A chunk larger than the plan allows must be refused, not buffered.
+func TestUploadRejectsOversizedChunk(t *testing.T) {
+	setupTestServer()
+
+	id := conduits.NewConduit(false, "a.bin", 5, "mysecret", 4096, 4, 16)
+	body := strings.Repeat("X", 5000)
+
+	r := httptest.NewRequest("PUT", "/ul/"+id, strings.NewReader(body))
+	r.Header.Set("x-fileway-secret", "mysecret")
+	w := httptest.NewRecorder()
+	ul(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("oversized chunk -> HTTP %d, want %d", w.Code, http.StatusBadRequest)
 	}
 }

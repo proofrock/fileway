@@ -304,9 +304,20 @@ func ul(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content, err := io.ReadAll(r.Body)
+	expectedSize := conduit.ClaimNextChunk()
+	if expectedSize < 0 {
+		http.Error(w, "No chunk expected", http.StatusBadRequest)
+		return
+	}
+	// Read one byte past the plan so an oversized body is detected rather than
+	// silently truncated.
+	content, err := io.ReadAll(io.LimitReader(r.Body, int64(expectedSize)+1))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(content) > expectedSize {
+		http.Error(w, "Chunk exceeds declared size", http.StatusBadRequest)
 		return
 	}
 

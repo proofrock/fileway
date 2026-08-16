@@ -45,6 +45,7 @@ type Conduit struct {
 
 	lastAccessed    atomic.Int64
 	downloadStarted atomic.Bool
+	chunkIndex      atomic.Int32
 	Latch           *latch.Latch
 }
 
@@ -121,6 +122,18 @@ func (c *Conduit) Download() error {
 	c.Latch.Unlock()
 
 	return nil
+}
+
+// ClaimNextChunk reserves the next expected chunk and returns its planned size,
+// or -1 once the whole plan has been claimed. Reserving and reading the index
+// is a single atomic step, so two concurrent uploads can never size-check
+// themselves against the same entry of the plan.
+func (c *Conduit) ClaimNextChunk() int {
+	idx := int(c.chunkIndex.Add(1)) - 1
+	if idx >= len(c.ChunkPlan) {
+		return -1
+	}
+	return c.ChunkPlan[idx]
 }
 
 // Offer offers a chunk of content to the Conduit (upload)
