@@ -85,15 +85,13 @@ func buildChunkPlan(size int64, chunkSize int) []int {
 	sum := int64(chunkSizeInitial)
 	lastChunk := chunkSizeInitial
 	ret := []int{chunkSizeInitial}
-	for {
+	for sum < size {
 		nextChunk := min(lastChunk*chunkSizeRampFactor, chunkSize, int(size-sum))
 		ret = append(ret, nextChunk)
 		sum += int64(nextChunk)
-		if sum == size {
-			return ret
-		}
 		lastChunk = nextChunk
 	}
+	return ret
 }
 
 // IsUploadSecretWrong checks if the provided secret is wrong

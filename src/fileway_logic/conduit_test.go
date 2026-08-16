@@ -18,6 +18,36 @@ import (
 	"testing"
 )
 
+func TestBuildChunkPlan(t *testing.T) {
+	cases := []struct {
+		size      int64
+		chunkSize int
+	}{
+		{4095, 4096},
+		{4096, 4096},
+		{4097, 4096},
+		{12288, 4096},
+		{1, 4096},
+	}
+	for _, c := range cases {
+		plan := buildChunkPlan(c.size, c.chunkSize)
+		// no zero chunks
+		for i, ch := range plan {
+			if ch == 0 {
+				t.Errorf("size=%d chunkSize=%d: chunk[%d] is zero", c.size, c.chunkSize, i)
+			}
+		}
+		// sum equals size
+		sum := int64(0)
+		for _, ch := range plan {
+			sum += int64(ch)
+		}
+		if sum != c.size {
+			t.Errorf("size=%d chunkSize=%d: plan sum=%d", c.size, c.chunkSize, sum)
+		}
+	}
+}
+
 func TestDownloadRace(t *testing.T) {
 	const rounds = 20000
 	const goroutines = 4
@@ -43,7 +73,11 @@ func TestDownloadRace(t *testing.T) {
 		wg.Wait()
 
 		if admitted != 1 {
+<<<<<<< HEAD
 			t.Fatalf("round %d: %d goroutines passed Download(), I want exactly 1", round, admitted)
+=======
+			t.Fatalf("round %d: %d goroutines passed Download(), want exactly 1", round, admitted)
+>>>>>>> 84dd90d72a50a5fbb5d4c4b439d5dc2c0384e6a3
 		}
 	}
 }
