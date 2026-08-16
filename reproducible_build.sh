@@ -5,7 +5,7 @@
 
 # Copy inside the src/ dir
 # Env vars must be already set: VERSION, SOURCE_DATE_EPOCH
-CGO_ENABLED=0 
+export CGO_ENABLED=0
 
 go build -trimpath -a -o fileway \
   -tags="netgo osusergo" \
