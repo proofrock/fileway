@@ -113,12 +113,11 @@ func (c *Conduit) WasAccessedAfter(cutoffTime int64) bool {
 
 // Download starts the download process
 func (c *Conduit) Download() error {
-	if c.downloadStarted.Load() {
+	if !c.downloadStarted.CompareAndSwap(false, true) {
 		return ErrConduitAlreadyDownloading
 	}
 
 	c.touch()
-	c.downloadStarted.Store(true)
 	c.Latch.Unlock()
 
 	return nil

@@ -18,6 +18,36 @@ import (
 	"testing"
 )
 
+func TestDownloadRace(t *testing.T) {
+	const rounds = 20000
+	const goroutines = 4
+
+	for round := 0; round < rounds; round++ {
+		c := newConduit(false, "f.bin", 4096, "s", 4096, 4, 16)
+
+		var wg sync.WaitGroup
+		admitted := 0
+		var mu sync.Mutex
+
+		for i := 0; i < goroutines; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if c.Download() == nil {
+					mu.Lock()
+					admitted++
+					mu.Unlock()
+				}
+			}()
+		}
+		wg.Wait()
+
+		if admitted != 1 {
+			t.Fatalf("round %d: %d goroutines passed Download(), I want exactly 1", round, admitted)
+		}
+	}
+}
+
 // Two concurrent uploads must never be handed the same entry of the plan:
 // the second would be size-checked against the first chunk's budget.
 func TestClaimNextChunkIsAtomic(t *testing.T) {
