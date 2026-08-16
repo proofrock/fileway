@@ -34,6 +34,7 @@ var (
 	idsLength       = utils.GetIntEnv("RANDOM_IDS_LENGTH", 33)      // Length of ID random strings, amounts to 192 bit
 	chunkSize       = utils.GetIntEnv("CHUNK_SIZE_KB", 4096) * 1024 // 4Mb
 	bufferQueueSize = utils.GetIntEnv("BUFFER_QUEUE_SIZE", 4)       // 16Mb total
+	port            = utils.GetIntEnv("PORT", 8080)
 )
 
 //go:embed static/upload.html
@@ -94,6 +95,9 @@ func main() {
 	if bufferQueueSize <= 0 {
 		log.Fatal("FATAL: BUFFER_QUEUE_SIZE must be > 0")
 	}
+	if port <= 0 || port > 65535 {
+		log.Fatal("FATAL: PORT must be between 1 and 65535")
+	}
 
 	authenticator = auth.NewAuth(secretHashes)
 
@@ -102,6 +106,7 @@ func main() {
 	conduits = fw.NewConduitSet(uploadTimeout)
 
 	fmt.Println("Parameters:")
+	fmt.Printf("- Port: %d\n", port)
 	fmt.Printf("- Chunk size: %d Kb\n", chunkSize/1024)
 	fmt.Printf("- Internal chunk queue size: %d\n", bufferQueueSize)
 	fmt.Printf("- Random IDs length: %d chars\n", idsLength)
@@ -118,8 +123,9 @@ func main() {
 	http.HandleFunc("/favicon.png", serveFile(favicon, "image/png"))
 	http.HandleFunc("/", serveFile(uploadPage, "text/html"))
 
-	log.Println("Starting server on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	addr := fmt.Sprintf(":%d", port)
+	log.Printf("Starting server on %s", addr)
+	log.Fatal(http.ListenAndServe(addr, nil))
 }
 
 func serveFile(file []byte, mime string) func(http.ResponseWriter, *http.Request) {

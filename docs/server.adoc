@@ -91,6 +91,7 @@ The following are the environment variables that you can set to configure `filew
 | env var | default value | description
 
 | `FILEWAY_SECRET_HASHES` | *Mandatory* | Comma-separated list of BCrypt hashes for the secrets.
+| `PORT` | 8080 | TCP port to listen on. See the caveat below before setting it in a container.
 | `CHUNK_SIZE_KB` | 4096 | Chunk size for upload and internal buffer, in kilobytes.
 | `BUFFER_QUEUE_SIZE` | 4 | Internal buffer queue of chunks.
 | `UPLOAD_TIMEOUT_SECS` | 240 | How many seconds an upload should "wait" for a downloadfootnote:[It's approximate, as the timeout is checked every 10 seconds.].
@@ -103,6 +104,17 @@ The following are the environment variables that you can set to configure `filew
 The numeric variables must all be greater than zero and valid numbers; the server refuses to start otherwise.
 
 Leave one unset (or empty) to get its defaut.
+
+Additionally, `PORT` must be between 1 and 65535.
+
+[WARNING]
+====
+`PORT` is meant for running the binary directly. The docker images assume the default:
+
+* `fileway` declares `EXPOSE 8080`, so if you change `PORT` you'll also want to change the port you publish with `-p`;
+* `fileway-caddy` additionally has `caddy` proxying to `http://localhost:8080` internally, so setting `PORT` there breaks the image.
+
+The "docker way" is to remap the published port instead — `-p 9000:8080` — and leave `PORT` as it is.
 ====
 
 == Reverse proxy
