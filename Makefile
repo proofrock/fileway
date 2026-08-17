@@ -1,4 +1,4 @@
-.PHONY: test
+.PHONY: test test-unit test-e2e
 
 # Builds an "instance", with reproducibility data somewhat fake ("0" as epoch and v0.0.999 as version)
 build-instance:
@@ -8,7 +8,16 @@ build-instance:
 	mv src/fileway bin/
 	rm src/reproducible_build.sh
 
-test:
+test: test-unit test-e2e
+
+# Unit and handler level, in-process, no network. Run with the race detector
+# because several of these cover concurrency invariants.
+test-unit:
+	cd src && go test ./... -race
+
+# Acceptance level: builds the real binary, runs the server, downloads the
+# python uploader and transfers real files through it.
+test-e2e:
 	bats test/test.sh
 
 cleanup:

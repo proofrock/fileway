@@ -14,6 +14,9 @@
 package main
 
 import (
+	"bytes"
+	"crypto/rand"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -165,5 +168,74 @@ func TestUploadOnExpiredConduitIsGone(t *testing.T) {
 
 	if w.Code != http.StatusGone {
 		t.Errorf("ul on expired conduit -> HTTP %d, want %d", w.Code, http.StatusGone)
+	}
+}
+
+// The whole transfer protocol in-process: setup, the downloader connecting,
+// ping handing out the plan, every chunk uploaded, and the payload arriving
+// byte-identical. Sizes straddle the ramp boundaries, including the exact
+// multiples that used to produce a trailing zero-length chunk.
+func TestTransferRoundTrip(t *testing.T) {
+	setupTestServer()
+
+	for _, size := range []int{1, 4095, 4096, 4097, 12288, 100000, 1000000} {
+		payload := make([]byte, size)
+		if _, err := rand.Read(payload); err != nil {
+			t.Fatal(err)
+		}
+
+		r := httptest.NewRequest("GET", "/setup?filename=a.bin&txt=0&size="+strconv.Itoa(size), nil)
+		r.Header.Set("x-fileway-secret", "mysecret")
+		w := httptest.NewRecorder()
+		setup(w, r)
+		if w.Code != http.StatusOK {
+			t.Fatalf("size=%d: setup -> HTTP %d", size, w.Code)
+		}
+		id := w.Body.String()
+
+		downloaded := make(chan []byte, 1)
+		go func() {
+			ww := httptest.NewRecorder()
+			ddl(ww, httptest.NewRequest("GET", "/ddl/"+id, nil))
+			downloaded <- ww.Body.Bytes()
+		}()
+		time.Sleep(30 * time.Millisecond) // let the downloader claim it
+
+		pr := httptest.NewRequest("GET", "/ping/"+id, nil)
+		pr.Header.Set("x-fileway-secret", "mysecret")
+		pw := httptest.NewRecorder()
+		ping(pw, pr)
+		if pw.Code != http.StatusOK {
+			t.Fatalf("size=%d: ping -> HTTP %d", size, pw.Code)
+		}
+		var plan []int
+		if err := json.Unmarshal(pw.Body.Bytes(), &plan); err != nil {
+			t.Fatalf("size=%d: bad plan: %v", size, err)
+		}
+
+		off := 0
+		for i, cs := range plan {
+			if cs == 0 {
+				t.Errorf("size=%d: plan contains a zero-length chunk at %d", size, i)
+			}
+			ur := httptest.NewRequest("PUT", "/ul/"+id, bytes.NewReader(payload[off:off+cs]))
+			ur.Header.Set("x-fileway-secret", "mysecret")
+			uw := httptest.NewRecorder()
+			ul(uw, ur)
+			if uw.Code != http.StatusOK {
+				t.Fatalf("size=%d: chunk %d/%d (%d bytes) -> HTTP %d %q",
+					size, i+1, len(plan), cs, uw.Code, uw.Body.String())
+			}
+			off += cs
+		}
+
+		select {
+		case got := <-downloaded:
+			if !bytes.Equal(got, payload) {
+				t.Errorf("size=%d: payload mismatch (%d bytes received)", size, len(got))
+			}
+		case <-time.After(3 * time.Second):
+			t.Errorf("size=%d: the download never completed", size)
+		}
 	}
 }

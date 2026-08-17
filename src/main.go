@@ -133,7 +133,6 @@ func main() {
 	})
 
 	addr := fmt.Sprintf(":%d", port)
-	log.Printf("Starting server on %s", addr)
 	srv := &http.Server{
 		Addr:              addr,
 		ReadHeaderTimeout: 10 * time.Second,
