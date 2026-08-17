@@ -314,19 +314,33 @@ func ping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// A timer rather than time.After: this returns before the 20s are up whenever
+	// a download shows up, and time.After would keep its timer alive until it
+	// fired anyway. One uploader parks here for the whole wait, so it adds up.
+	timer := time.NewTimer(20 * time.Second)
+	defer timer.Stop()
+
 	var ret []byte
-	if conduit.Latch.Wait(20 * time.Second) {
+	select {
+	case <-conduit.Done:
+		http.Error(w, "Transfer expired", http.StatusGone)
+		return
+	case <-conduit.Started:
+		// Both channels can be closed by the time we get here, and select picks
+		// among ready cases at random, so the expiry check has to be repeated:
+		// handing out a plan for a conduit that is already gone would send the
+		// uploader into chunks that can only 404.
 		if conduit.IsExpired() {
 			http.Error(w, "Transfer expired", http.StatusGone)
 			return
 		}
-		if _ret, err := json.Marshal(conduit.ChunkPlan); err != nil {
+		_ret, err := json.Marshal(conduit.ChunkPlan)
+		if err != nil {
 			http.Error(w, "Marshaling issue", http.StatusInternalServerError)
 			return
-		} else {
-			ret = _ret
 		}
-	} else { // timed out
+		ret = _ret
+	case <-timer.C: // nobody yet; the uploader will ask again
 		ret = []byte("[]")
 	}
 

@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/proofrock/fileway/utils"
-	"github.com/proofrock/fileway/utils/latch"
 )
 
 const (
@@ -40,7 +39,13 @@ type Conduit struct {
 	ChunkPlan []int
 
 	ChunkQueue chan []byte
-	Done       chan struct{} // closed when the conduit expires; select on this to detect expiry
+
+	// The two ends of a conduit's life, as channels closed exactly once. A closed
+	// channel is a broadcast that every waiter sees, immediately and forever, so
+	// selecting on both tells a caller which of the two happened - no follow-up
+	// query needed.
+	Started chan struct{} // closed when a download claims the conduit
+	Done    chan struct{} // closed when the conduit expires
 
 	secret string
 
@@ -48,7 +53,6 @@ type Conduit struct {
 	downloadStarted atomic.Bool
 	expired         atomic.Bool
 	chunkIndex      atomic.Int32
-	Latch           *latch.Latch
 }
 
 // Creates a new Conduit instance
@@ -66,8 +70,8 @@ func newConduit(
 		Size:       size,
 		secret:     secret,
 		ChunkQueue: make(chan []byte, bufferQueueSize),
+		Started:    make(chan struct{}),
 		Done:       make(chan struct{}),
-		Latch:      latch.NewLatch(),
 	}
 
 	if !ret.IsText {
@@ -119,14 +123,15 @@ func (c *Conduit) WasAccessedAfter(cutoffTime int64) bool {
 	return c.lastAccessed.Load() > cutoffTime
 }
 
-// Download starts the download process
+// Download starts the download process. The CAS makes this the only caller that
+// gets through, so closing Started here cannot happen twice.
 func (c *Conduit) Download() error {
 	if !c.downloadStarted.CompareAndSwap(false, true) {
 		return ErrConduitAlreadyDownloading
 	}
 
 	c.touch()
-	c.Latch.Unlock()
+	close(c.Started)
 
 	return nil
 }

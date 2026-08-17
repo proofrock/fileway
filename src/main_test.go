@@ -171,6 +171,64 @@ func TestUploadOnExpiredConduitIsGone(t *testing.T) {
 	}
 }
 
+// A conduit that expires while ping is parked on it must come back as 410, and
+// come back immediately - not sit there until the 20s long-poll runs out, and not
+// hand over a chunk plan the uploader can no longer use.
+func TestPingReportsExpiryAsGone(t *testing.T) {
+	setupTestServer()
+
+	id := conduits.NewConduit(false, "a.bin", 8, "mysecret", 4096, 1, 16)
+	conduit := conduits.GetConduit(id)
+
+	r := httptest.NewRequest("GET", "/ping/"+id, nil)
+	r.Header.Set("x-fileway-secret", "mysecret")
+	w := httptest.NewRecorder()
+
+	returned := make(chan struct{})
+	go func() {
+		defer close(returned)
+		ping(w, r)
+	}()
+
+	// Give ping time to reach the select, then expire the conduit under it.
+	time.Sleep(50 * time.Millisecond)
+	conduit.Expire()
+
+	select {
+	case <-returned:
+	case <-time.After(5 * time.Second):
+		t.Fatal("ping did not return once the conduit expired; it is waiting out the full long-poll")
+	}
+
+	if w.Code != http.StatusGone {
+		t.Errorf("ping on a conduit that expired while waiting -> HTTP %d, want %d", w.Code, http.StatusGone)
+	}
+}
+
+// With a download started and the conduit expired, both channels ping selects on
+// are closed, and select picks among ready cases at random. Expiry has to win
+// every time, not half the time - hence the repetition.
+func TestPingPrefersExpiryOverStartedPlan(t *testing.T) {
+	setupTestServer()
+
+	id := conduits.NewConduit(false, "a.bin", 8, "mysecret", 4096, 1, 16)
+	conduit := conduits.GetConduit(id)
+	if err := conduit.Download(); err != nil {
+		t.Fatal(err)
+	}
+	conduit.Expire()
+
+	for i := 0; i < 50; i++ {
+		r := httptest.NewRequest("GET", "/ping/"+id, nil)
+		r.Header.Set("x-fileway-secret", "mysecret")
+		w := httptest.NewRecorder()
+		ping(w, r)
+		if w.Code != http.StatusGone {
+			t.Fatalf("attempt %d: ping -> HTTP %d, want %d", i, w.Code, http.StatusGone)
+		}
+	}
+}
+
 // The whole transfer protocol in-process: setup, the downloader connecting,
 // ping handing out the plan, every chunk uploaded, and the payload arriving
 // byte-identical. Sizes straddle the ramp boundaries, including the exact
