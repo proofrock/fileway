@@ -28,6 +28,13 @@ sys.stdout.reconfigure(line_buffering=True)
 
 user_agent = "FilewayUploader"
 
+# The server reports an expired transfer as 410 (Gone) from /ping/ and /ul/,
+# and as 404 once the conduit has been dropped from its table.
+EXPIRY_CODES = (404, 410)
+
+def is_expiry(e):
+    return isinstance(e, urllib.error.HTTPError) and e.code in EXPIRY_CODES
+
 def upload_txt(text, secret):
     text = text.encode("utf-8")
     size = len(text)
@@ -86,11 +93,18 @@ def upload_txt(text, secret):
 
                 print("All data sent. Bye!                     ")
 
+        except urllib.error.HTTPError as e:
+            if is_expiry(e):
+                print("ERROR: transfer expired.                ")
+                sys.exit(1)
+            print(f"HTTP Error: {e}")
+            sys.exit(1)
         except urllib.error.URLError as e:
             print(f"URL Error: {e}")
+            sys.exit(1)
     except Exception as e:
         print(f"Unexpected error: {e}")
-    
+
 def upload_file(filepath, secret):
     # Extract filename from path
     filename = os.path.basename(filepath)
@@ -161,15 +175,21 @@ def upload_file(filepath, secret):
                                     return
 
                     print("All data sent. Bye!                     ")
-                except urllib.error.URLError as e:
-                    if e.reason == "Not Found":
-                        print("ERROR: upload timed out.                ")
+                except urllib.error.HTTPError as e:
+                    if is_expiry(e):
+                        print("ERROR: transfer expired.                ")
                         sys.exit(1)
-                    else:
-                        raise e
+                    raise e
 
+        except urllib.error.HTTPError as e:
+            if is_expiry(e):
+                print("ERROR: transfer expired.                ")
+                sys.exit(1)
+            print(f"HTTP Error: {e}")
+            sys.exit(1)
         except urllib.error.URLError as e:
             print(f"URL Error: {e}")
+            sys.exit(1)
     except Exception as e:
         print(f"Unexpected error: {e}")
 
@@ -189,10 +209,11 @@ def create_temp_zip(paths_list):
                     if os.path.isfile(path):
                         zipf.write(path, os.path.basename(path))
                     elif os.path.isdir(path):
-                        for root, _, files in os.walk(path):
+                        norm = os.path.normpath(path)
+                        for root, _, files in os.walk(norm):
                             for file in files:
                                 file_path = os.path.join(root, file)
-                                arcname = os.path.relpath(file_path, os.path.dirname(path))
+                                arcname = os.path.relpath(file_path, os.path.dirname(norm))
                                 zipf.write(file_path, arcname)
                 else:
                     print(f"Error: Path not found: {path}")
@@ -232,9 +253,9 @@ def get_secret(save_to_home):
         secret = getpass.getpass("Please enter the secret: ")
         if save_to_home:
             try:
-                with open(creds_file, 'w') as f:
+                fd = os.open(creds_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o400)
+                with os.fdopen(fd, 'w') as f:
                     f.write(obfuscate(secret))
-                    os.chmod(creds_file, 0o400)
                 print(f"Secret saved to {creds_file}")
             except Exception as e:
                 print(f"Error saving secret: {e}")
@@ -317,7 +338,9 @@ if __name__ == "__main__":
             upload_file(payload, secret)
     except KeyboardInterrupt:
         print('Interrupted')
-        try:
-            sys.exit(130)
-        except SystemExit:
-            os._exit(130)
+        if args.is_zip and payload and os.path.exists(payload):
+            try:
+                os.remove(payload)
+            except OSError:
+                pass
+        sys.exit(130)
