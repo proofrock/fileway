@@ -21,34 +21,49 @@ import (
 )
 
 type Auth struct {
+	// Written once by NewAuth before any concurrent use, then read-only.
 	secretHashes [][]byte
-	passwords    map[string]bool // cache
-	mu           sync.Mutex
+
+	// Cache of secrets already verified against a hash. Only successes are
+	// stored, so it is bounded by the number of configured secrets.
+	passwords map[string]bool
+	mu        sync.RWMutex
 }
 
 func NewAuth(envvar string) *Auth {
 	ret := &Auth{
 		secretHashes: make([][]byte, 0),
-		passwords:    make(map[string]bool, 0),
+		passwords:    make(map[string]bool),
 	}
 
 	for _, s := range strings.Split(envvar, ",") {
-		ret.secretHashes = append(ret.secretHashes, []byte(s))
+		// Whitespace around a comma-separated hash is easy to introduce in a
+		// compose file and would otherwise make the hash silently unusable.
+		if s = strings.TrimSpace(s); s != "" {
+			ret.secretHashes = append(ret.secretHashes, []byte(s))
+		}
 	}
 
 	return ret
 }
 
 func (a *Auth) Authenticate(pwd string) bool {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	if _, ok := a.passwords[pwd]; ok {
+	a.mu.RLock()
+	cached := a.passwords[pwd]
+	a.mu.RUnlock()
+	if cached {
 		return true
 	}
+
+	// bcrypt is deliberately expensive, so it runs outside the lock: holding it
+	// here would serialize every authentication behind the slowest one, and a
+	// burst of wrong secrets (never cached, so always paying full price) would
+	// stall users whose secret is already cached.
 	for _, hash := range a.secretHashes {
 		if err := bcrypt.CompareHashAndPassword(hash, []byte(pwd)); err == nil {
+			a.mu.Lock()
 			a.passwords[pwd] = true
+			a.mu.Unlock()
 			return true
 		}
 	}
