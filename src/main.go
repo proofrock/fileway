@@ -134,7 +134,14 @@ func main() {
 
 	addr := fmt.Sprintf(":%d", port)
 	log.Printf("Starting server on %s", addr)
-	log.Fatal(http.ListenAndServe(addr, nil))
+	srv := &http.Server{
+		Addr:              addr,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		// WriteTimeout intentionally omitted: transfers can be arbitrarily long
+	}
+	log.Printf("Starting server on %s", addr)
+	log.Fatal(srv.ListenAndServe())
 }
 
 func serveFile(file []byte, contentType string) func(http.ResponseWriter, *http.Request) {
