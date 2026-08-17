@@ -15,7 +15,7 @@ jobs:
     name: fileway tests
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Bats and bats libs
         id: setup-bats
         uses: bats-core/bats-action@3.0.0
@@ -28,9 +28,15 @@ jobs:
     needs:
       - test
 
+    # Drafting a release is a write to this repository's contents, and the
+    # automatic token is read-only by default. Granted here rather than passing a
+    # PAT: this token is scoped to this repo and dies with the job.
+    permissions:
+      contents: write
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      # No checkout: the release is drafted empty, with no assets attached, so
+      # the action never reads the working tree.
       - name: Create Draft Release
         uses: softprops/action-gh-release@v2
         with:
@@ -38,8 +44,6 @@ jobs:
           name: Version ${{ github.ref_name }}
           draft: true
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
 
   # https://docs.docker.com/build/ci/github-actions/multi-platform/
 
@@ -61,7 +65,7 @@ jobs:
           platform=${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -154,7 +158,7 @@ jobs:
           platform=${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
