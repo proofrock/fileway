@@ -266,8 +266,8 @@ Now get the parameters that were used to build it:
 REPRODUCIBLE_BUILD_INFO=1 ./fileway 
 # ...
 # Variables used for this build:
-# - VERSION='v0.4.1'
-# - SOURCE_DATE_EPOCH='47836427937'
+# - VERSION: 'v0.4.1'
+# - SOURCE_DATE_EPOCH: '47836427937'
 ----
 
 Download the correct version of the official repository and build a binary using the parameters reported by the application.

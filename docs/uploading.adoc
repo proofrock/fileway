@@ -79,6 +79,8 @@ All set up! Download your file using:
 
 Keep the script open until the upload is done. It exits automatically when it's finished.
 
+If nobody downloads within the server's xref:server.adoc#TEX[upload timeout], the transfer is dropped: the script prints `ERROR: transfer expired.` and exits with status `1`, so it's safe to use in a shell script. Once a download has started, the transfer is not subject to that timeout — a slow download won't be cut off.
+
 ==== For text
 
 If you want to share a text, use the `--txt` commandline arguments, with the text as the other argument.
@@ -88,17 +90,18 @@ If you want to share a text, use the `--txt` commandline arguments, with the tex
 ----
 == Fileway vX.Y.Z ==
 
-usage: fileway_ul.py [-h] [--save] [--zip] [files ...]
+usage: fileway_ul.py [-h] [--txt] [--save] [--zip] [payloads ...]
 
 Uploader for Fileway
 
 positional arguments:
-  files       List of files if --zip, just one if not
+  payloads    List of files if --zip, just one if not; a text if --txt
 
 options:
   -h, --help  show this help message and exit
+  --txt       Send a text. Incompatible with --zip.
   --save      Save the secret to user home
-  --zip       Enable zip mode
+  --zip       Enable zip mode. Incompatible with --txt.
 ----
 
 The options are explained in the next sections.
@@ -109,15 +112,14 @@ If you want to upload multiple files, the script will happily zip them to a temp
 
 [source,bash]
 ----
-./fileway_ul.py --zip myfile.bin mydir/ myfile2.bin
+./fileway_ul.py --zip myfile.bin mydir myfile2.bin
 ----
 
 Please note that:
 
 * The recipient will download a zip file;
 * Your temp directory must have enough free space to hold the temp file;
-* The script uses Python's features to delete the file, but there may be some cases in which it's not possible to do it (e.g. if the OS halts abruptly);
-** In this case, check in the temp directory for any file named `fileway_*.zip`.
+* The script deletes the temp zip on exit, including on Ctrl-C; if the process is killed abruptly by the OS, check the temp directory for any file named `fileway_*.zip`.
 
 ==== `--save`: Save the secret [[SAV]]
 
