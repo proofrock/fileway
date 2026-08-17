@@ -196,6 +196,16 @@
                     const pingResponse = await fetch(`${baseUrl}/ping/${conduitId}`, {
                         headers: { 'x-fileway-secret': secret }
                     });
+                    if (pingResponse.status === 410) {
+                        status.textContent = 'Transfer expired: no downloader connected in time.';
+                        status2.textContent = 'Reload this page to start a new transfer.';
+                        return;
+                    }
+                    if (!pingResponse.ok) {
+                        status.textContent = `Ping error: ${await pingResponse.text()}`;
+                        status2.textContent = 'Reload this page to retry.';
+                        return;
+                    }
                     chunkList = await pingResponse.json();
                     if (chunkList.length > 0) {
                         break;
@@ -242,15 +252,22 @@
                     document.getElementById('textInput').value = '';
                 }
             } catch (error) {
-                status.textContent = `Error: ${error.text}`;
+                status.textContent = `Error: ${error.message}`;
                 status2.textContent = 'Reload this page to retry';
             }
         }
 
         function copyToClipboard(elementId) {
             const input = document.getElementById(elementId);
-            input.select();
-            document.execCommand('copy');
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(input.value).catch(() => {
+                    input.select();
+                    document.execCommand('copy');
+                });
+            } else {
+                input.select();
+                document.execCommand('copy');
+            }
         }
 
         document.getElementById('uploadButton').addEventListener('click', uploadFile);
