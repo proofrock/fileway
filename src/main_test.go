@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/proofrock/fileway/auth"
 	fw "github.com/proofrock/fileway/fileway_logic"
@@ -74,5 +75,95 @@ func TestUploadRejectsOversizedChunk(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("oversized chunk -> HTTP %d, want %d", w.Code, http.StatusBadRequest)
+	}
+}
+
+// A conduit that expires while chunks are still buffered must still deliver
+// them: the downloader was promised Content-Length bytes and silently getting
+// fewer corrupts the file.
+func TestDownloadDeliversBufferedChunksOnExpiry(t *testing.T) {
+	setupTestServer()
+
+	const rounds = 200
+	truncated := 0
+	for i := 0; i < rounds; i++ {
+		id := conduits.NewConduit(false, "a.bin", 12, "mysecret", 4096, 4, 16)
+		conduit := conduits.GetConduit(id)
+
+		// The uploader delivered everything and went away; the chunks sit in
+		// the buffer waiting for a slow downloader.
+		conduit.ChunkQueue <- []byte("aaaa")
+		conduit.ChunkQueue <- []byte("bbbb")
+		conduit.ChunkQueue <- []byte("cccc")
+
+		// The cleanup ticker fires right now.
+		conduit.Expire()
+
+		// ddl() claims the download itself, so it must not be claimed here.
+		r := httptest.NewRequest("GET", "/ddl/"+id, nil)
+		w := httptest.NewRecorder()
+		ddl(w, r)
+
+		if w.Body.Len() != 12 {
+			truncated++
+		}
+	}
+
+	if truncated > 0 {
+		t.Errorf("%d/%d downloads were truncated despite the chunks being buffered", truncated, rounds)
+	}
+}
+
+// Streaming a chunk must keep the conduit alive, otherwise a download slower
+// than UPLOAD_TIMEOUT_SECS is killed by the cleanup ticker halfway through.
+func TestDownloadKeepsConduitAlive(t *testing.T) {
+	setupTestServer()
+
+	id := conduits.NewConduit(false, "a.bin", 8, "mysecret", 4096, 4, 16)
+	conduit := conduits.GetConduit(id)
+
+	// ddl() claims the download itself, so it must not be claimed here.
+	finished := make(chan struct{})
+	go func() {
+		r := httptest.NewRequest("GET", "/ddl/"+id, nil)
+		ddl(httptest.NewRecorder(), r)
+		close(finished)
+	}()
+
+	// Let ddl() get past Download(), which touches the conduit on its own: the
+	// cutoff has to sit after that, or it would measure the wrong touch.
+	time.Sleep(30 * time.Millisecond)
+	cutoff := time.Now().UnixMilli()
+	time.Sleep(5 * time.Millisecond)
+
+	conduit.ChunkQueue <- []byte("aaaa")
+	time.Sleep(30 * time.Millisecond)
+
+	alive := conduit.WasAccessedAfter(cutoff)
+	conduit.ChunkQueue <- []byte("bbbb")
+	<-finished
+
+	if !alive {
+		t.Error("streaming a chunk did not touch the conduit; a slow transfer would expire mid-flight")
+	}
+}
+
+// An expired conduit must be reported as 410 by /ul/ too, not as a 408 that
+// clients would read as a transient stall.
+func TestUploadOnExpiredConduitIsGone(t *testing.T) {
+	setupTestServer()
+
+	id := conduits.NewConduit(false, "a.bin", 8, "mysecret", 4096, 1, 16)
+	conduit := conduits.GetConduit(id)
+	conduit.ChunkQueue <- []byte("full") // fill the queue so Offer() must block
+	conduit.Expire()
+
+	r := httptest.NewRequest("PUT", "/ul/"+id, strings.NewReader("aaaa"))
+	r.Header.Set("x-fileway-secret", "mysecret")
+	w := httptest.NewRecorder()
+	ul(w, r)
+
+	if w.Code != http.StatusGone {
+		t.Errorf("ul on expired conduit -> HTTP %d, want %d", w.Code, http.StatusGone)
 	}
 }

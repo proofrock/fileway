@@ -55,7 +55,8 @@ func (cs *ConduitSet) cleanupStaleConduits() {
 		if !conduit.WasAccessedAfter(cutoffTime) {
 			i++
 			delete(cs.conduits, id)
-			conduit.Latch.Unlock() // Unlock the latch, so that any waiting upload can fail
+			conduit.Expire()       // flag it and close Done, so ping can answer 410
+			conduit.Latch.Unlock() // unblock any waiting upload
 		}
 	}
 	if i > 0 {

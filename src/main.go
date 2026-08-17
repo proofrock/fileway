@@ -16,6 +16,7 @@ package main
 import (
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -202,21 +203,46 @@ func ddl(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", strconv.FormatInt(conduit.Size, 10))
 
 	transferred := int64(0)
-	for {
-		chunk, ok := <-conduit.ChunkQueue
-		if !ok || len(chunk) == 0 {
-			break
-		}
-
-		_, err := w.Write(chunk)
-		if err != nil {
-			log.Printf("Error writing chunk: %v", err)
-			break
-		}
-
-		transferred += int64(len(chunk))
-		if transferred >= conduit.Size {
-			break
+	ctx := r.Context()
+loop:
+	for transferred < conduit.Size {
+		select {
+		case <-ctx.Done():
+			log.Printf("Downloader disconnected for conduit %s", conduit.Id)
+			break loop
+		case chunk, ok := <-conduit.ChunkQueue:
+			if !ok || len(chunk) == 0 {
+				break loop
+			}
+			if _, err := w.Write(chunk); err != nil {
+				log.Printf("Error writing chunk: %v", err)
+				break loop
+			}
+			conduit.Touch() // a slow but progressing transfer must not expire
+			transferred += int64(len(chunk))
+		case <-conduit.Done:
+			// The conduit expired. Whatever the uploader already handed over is
+			// still owed to the downloader, so drain the buffer before giving up:
+			// select picks a ready case at random, so without this the buffered
+			// chunks would be dropped and the body would silently fall short of
+			// the Content-Length we announced.
+			for transferred < conduit.Size {
+				var chunk []byte
+				select {
+				case chunk = <-conduit.ChunkQueue:
+				default:
+					log.Printf("Conduit %s expired during download", conduit.Id)
+					break loop
+				}
+				if len(chunk) == 0 {
+					break loop
+				}
+				if _, err := w.Write(chunk); err != nil {
+					log.Printf("Error writing chunk: %v", err)
+					break loop
+				}
+				transferred += int64(len(chunk))
+			}
 		}
 	}
 
@@ -284,6 +310,10 @@ func ping(w http.ResponseWriter, r *http.Request) {
 
 	var ret []byte
 	if conduit.Latch.Wait(20 * time.Second) {
+		if conduit.IsExpired() {
+			http.Error(w, "Transfer expired", http.StatusGone)
+			return
+		}
 		if _ret, err := json.Marshal(conduit.ChunkPlan); err != nil {
 			http.Error(w, "Marshaling issue", http.StatusInternalServerError)
 			return
@@ -329,6 +359,12 @@ func ul(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := conduit.Offer(content); err != nil {
+		// An expired conduit is reported as 410 everywhere, matching ping, so
+		// clients can tell "this transfer is over" from "this chunk stalled".
+		if errors.Is(err, fw.ErrConduitExpired) {
+			http.Error(w, err.Error(), http.StatusGone)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusRequestTimeout)
 		return
 	}

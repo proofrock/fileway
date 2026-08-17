@@ -40,11 +40,13 @@ type Conduit struct {
 	ChunkPlan []int
 
 	ChunkQueue chan []byte
+	Done       chan struct{} // closed when the conduit expires; select on this to detect expiry
 
 	secret string
 
 	lastAccessed    atomic.Int64
 	downloadStarted atomic.Bool
+	expired         atomic.Bool
 	chunkIndex      atomic.Int32
 	Latch           *latch.Latch
 }
@@ -64,6 +66,7 @@ func newConduit(
 		Size:       size,
 		secret:     secret,
 		ChunkQueue: make(chan []byte, bufferQueueSize),
+		Done:       make(chan struct{}),
 		Latch:      latch.NewLatch(),
 	}
 
@@ -104,6 +107,13 @@ func (c *Conduit) touch() {
 	c.lastAccessed.Store(time.Now().UnixMilli())
 }
 
+// Touch marks the conduit as active. A download in progress must call it as it
+// streams, otherwise a transfer slower than the expiry window is garbage
+// collected halfway through.
+func (c *Conduit) Touch() {
+	c.touch()
+}
+
 // WasAccessedBefore checks if the lastAccessed timestamp is before the provided cutoff time
 func (c *Conduit) WasAccessedAfter(cutoffTime int64) bool {
 	return c.lastAccessed.Load() > cutoffTime
@@ -119,6 +129,18 @@ func (c *Conduit) Download() error {
 	c.Latch.Unlock()
 
 	return nil
+}
+
+// IsExpired reports whether this conduit was removed due to timeout.
+func (c *Conduit) IsExpired() bool {
+	return c.expired.Load()
+}
+
+// Expire marks the conduit as expired and closes Done so downloaders and uploaders unblock.
+func (c *Conduit) Expire() {
+	if c.expired.CompareAndSwap(false, true) {
+		close(c.Done)
+	}
 }
 
 // ClaimNextChunk reserves the next expected chunk and returns its planned size,
@@ -139,6 +161,8 @@ func (c *Conduit) Offer(content []byte) error {
 	select {
 	case c.ChunkQueue <- content:
 		return nil
+	case <-c.Done:
+		return ErrConduitExpired
 	case <-time.After(30 * time.Second):
 		return ErrUploadTimeout
 	}
@@ -147,4 +171,5 @@ func (c *Conduit) Offer(content []byte) error {
 var (
 	ErrConduitAlreadyDownloading = fmt.Errorf("conduit Already Downloading or Downloaded")
 	ErrUploadTimeout             = fmt.Errorf("upload timed out. Conduit seems stuck")
+	ErrConduitExpired            = fmt.Errorf("conduit expired while upload was in progress")
 )

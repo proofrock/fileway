@@ -124,6 +124,32 @@ The cap exists because the server plans the chunks of a transfer up front, so th
 
 A zero-length payload is rejected because there is nothing to hand to the downloader, so the transfer could only hang.
 
+=== Transfer expiry [[TEX]]
+
+An upload that nobody downloads within `UPLOAD_TIMEOUT_SECS` is dropped: the server forgets the conduit and the uploading client is told to give up. The check runs on a 10-second tick, so the actual lifetime is the timeout rounded up to the next tick.
+
+This only counts idle time. A transfer that is under way keeps itself alive as long as bytes keep moving, in either direction, so a slow download is never cut off halfway through no matter how long it takes.
+
+Both the web page and the CLI script handle this on their own; the rest of this section matters only if you are writing your own client.
+
+==== Status codes for an expired transfer
+
+An expired transfer is reported as **`410 Gone`** — from `/ping/`, and from `/ul/` if an upload was in flight when it happened.
+
+There is one wrinkle. `/ping/` is a long poll, so which code you get depends on where your request was when the transfer was dropped:
+
+[cols="1,1"]
+|===
+| Your `/ping/` request | Response
+
+| was already parked on the server when the transfer expired | `410 Gone`
+| arrived after the server had already forgotten the conduit | `404 Not Found`
+|===
+
+Both mean the same thing to you, and the difference is not worth acting on. The server cannot always answer `410`, because once a conduit is forgotten there is nothing left to distinguish an expired id from an id that never existed — telling them apart would mean remembering every expired id for a while, which is the same expiry problem one level up.
+
+**So: treat `404` and `410` from `/ping/` and `/ul/` as the same terminal condition — the transfer is over, stop and report it.** Do not key on the reason phrase; match the status code.
+
 == Reverse proxy
 
 As said, `fileway` doesn't provide HTTPS, it's not its role. It's possible and easy to configure a reverse proxy to provide HTTPS.
